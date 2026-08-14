@@ -1,20 +1,17 @@
 git提交规范
 常用 type： feat （新功能）、 fix （修复）、 refactor （重构）、 chore （构建/工具）、 docs （文档）。本次属于重构，推荐 refactor 。
-如果你希望我直接执行提交，请告诉我用哪条提交信息。
-例如： refactor(types): 迁移 .d.ts 文件至 src/types 目录
 
 
 <div align="center">
 
-<img alt="vue3-element-admin" width="80" src="./src/assets/images/logo.png">
+<img alt="lrcore-cloud-admin-ui" width="80" src="./src/assets/images/logo.png">
 
-# vue3-element-admin
+# lrcore-cloud-admin-ui
 
-**Vue3 + Vite + TypeScript 企业级后台管理前端**
+**Vue3 + Vite + Pinia + TypeScript 企业级后台管理前端**
 
 [![Vue](https://img.shields.io/badge/Vue-3.5.30-brightgreen.svg)](https://vuejs.org/)
 [![Element Plus](https://img.shields.io/badge/Element%20Plus-2.13.6-blue.svg)](https://element-plus.org/)
-[![Gitee Star](https://gitee.com/youlaiorg/vue3-element-admin/badge/star.svg)](https://gitee.com/youlaiorg/vue3-element-admin/stargazers)
 [![GitHub Star](https://img.shields.io/github/stars/youlaitech/vue3-element-admin?style=social)](https://github.com/lQIgithub/lrcore-cloud-admin-ui)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -28,12 +25,12 @@ git提交规范
 
 ## 项目简介
 
-[vue3-element-admin](https://gitcode.com/youlai/vue3-element-admin) 基于 Vue3、Vite、TypeScript 和 Element-Plus 搭建的极简开箱即用企业级后台管理前端模板。 配套 Java 后端 [youlai-boot](https://gitee.com/youlaiorg/youlai-boot)、多租户后端 [youlai-boot-tenant](https://gitee.com/youlaiorg/youlai-boot-tenant) 和 Node 后端 [youlai-nest](https://gitee.com/youlaiorg/youlai-nest) 。 提供开发简版[vue3-element-template](https://gitee.com/youlaiorg/vue3-element-template) 和 JS 版本[vue3-element-admin-js](https://gitee.com/youlaiorg/vue3-element-admin) 供开发者快速开发。
+[lrcore-cloud-admin-ui](https://github.com/lQIgithub/lrcore-cloud-admin-ui) 基于 Vue3、Vite、Pinia、TypeScript 和 Element-Plus 搭建的极简开箱即用企业级后台管理前端模板。 配套微服务框架（包含多租户） [lrcore_cloud](https://github.com/lQIgithub/lrcore-cloud-platform)平台、供开发者快速开发。
 
 ## 项目特色
 
-- **简洁易用**：基于 [vue-element-admin](https://gitee.com/panjiachen/vue-element-admin) 升级的 Vue3 版本，无过渡封装 ，易上手。
-- **数据交互**： 支持 `Mock` 数据和[线上接口文档](https://www.apifox.cn/apidoc/shared-195e783f-4d85-4235-a038-eec696de4ea5)，并提供配套的 [Java](https://gitee.com/youlaiorg/youlai-boot) 和 [Node](https://gitee.com/youlaiorg/youlai-nest) 后端源码。
+- **简洁易用**：基于 Vue3 版本，无过渡封装 ，易上手。
+- **数据交互**： 支持 `Mock` 数据，并提供配套的 [Java](https://gitee.com/youlaiorg/youlai-boot)后端源码。
 
 - **系统功能：** 提供用户管理、角色管理、菜单管理、部门管理、字典管理、系统配置、通知公告等功能模块。
 - **权限管理：** 支持动态路由、按钮权限、角色权限和数据权限等多种权限管理方式。
@@ -62,42 +59,20 @@ git提交规范
   </tr>
 </table>
 
-**移动端**
-
-<table align="center">
-  <tr>
-    <td><img alt="APP预览1" width="200" src="./public/images/preview/app-01.png"></td>
-    <td><img alt="APP预览2" width="200" src="./public/images/preview/app-02.png"></td>
-    <td><img alt="APP预览3" width="200" src="./public/images/preview/app-03.png"></td>
-    <td><img alt="APP预览4" width="200" src="./public/images/preview/app-04.png"></td>
-  </tr>
-</table>
-
 ## 生态矩阵
 
 **前端**
 
-| 项目 | 技术栈 | 说明 |
-|:-----|:-------|:-----|
-| [vue3-element-admin](https://gitee.com/youlaiorg/vue3-element-admin) | Vue 3 + Vite + TS + Element Plus | PC 管理前端（主推） |
-| [vue3-element-admin-js](https://gitee.com/youlaiorg/vue3-element-admin-js) | Vue 3 + Vite + JS + Element Plus | JavaScript 版本 |
-| [vue3-element-template](https://gitee.com/youlaiorg/vue3-element-template) | Vue 3 + Vite + TS + Element Plus | 精简模板 |
-| [youlai-app](https://gitee.com/youlaiorg/youlai-app) | Vue 3 + UniApp | 移动端 App |
+| 项目 | 技术栈                                        | 说明 |
+|:-----|:-------------------------------------------|:-----|
+| [vue3-element-admin](https://github.com/lQIgithub/lrcore-cloud-admin-ui) | Vue 3 + Vite + TS + + Pinia + Element Plus | PC 管理前端（主推） |
 
 **后端**
 
-| 项目 | 技术栈 | 说明 |
-|:-----|:-------|:-----|
-| [youlai-boot](https://gitee.com/youlaiorg/youlai-boot) | Spring Boot + MyBatis-Plus | Java 后端（主推） |
-| [youlai-nest](https://gitee.com/youlaiorg/youlai-nest) | NestJS + TypeORM | Node.js |
-| [youlai-gin](https://gitee.com/youlaiorg/youlai-gin) | Go + Gorm | Go |
-| [youlai-django](https://gitee.com/youlaiorg/youlai-django) | Django + DRF | Python |
-| [youlai-think](https://gitee.com/youlaiorg/youlai-think) | ThinkPHP 8 | PHP |
-| [youlai-aspnet](https://gitee.com/youlaiorg/youlai-aspnet) | ASP.NET Core | C# |
+| 项目                                                      | 技术栈                        | 说明 |
+|:--------------------------------------------------------|:---------------------------|:-----|
+| [lrcore-cloud](https://github.com/lQIgithub/lrcore-cloud-platform) | Spring Boot + MyBatis-Flex | Java 后端（主推） |
 
-> **youlai-boot** 还提供以下变种和分支版本：[多租户](https://gitee.com/youlaiorg/youlai-boot-tenant)（Spring Boot 4）· [MyBatis-Flex](https://gitee.com/youlaiorg/youlai-boot-flex)（Spring Boot 4）· [Spring Boot 3](https://gitee.com/youlaiorg/youlai-boot/tree/spring-boot-3) · [PostgreSQL](https://gitee.com/youlaiorg/youlai-boot/tree/db-pg) · [多模块](https://gitee.com/youlaiorg/youlai-boot/tree/multi-module)
->
-> 六种后端共享同一套 **RESTful API 规范** 和 **数据库结构**，前端可无缝切换。
 
 ## 开发指南
 
@@ -124,10 +99,10 @@ git提交规范
 
 ```bash
 # 克隆代码
-git clone https://gitee.com/youlaiorg/vue3-element-admin.git
+git clone https://github.com/lQIgithub/lrcore-cloud-admin-ui.git
 
 # 切换目录
-cd vue3-element-admin
+cd lrcore-cloud-admin-ui
 
 # 安装 pnpm
 npm install pnpm -g
@@ -180,9 +155,9 @@ server {
 
 > 如果您具备Java开发基础，按照以下步骤将在线接口转为本地后端接口，创建企业级前后端分离开发环境，助您走向全栈之路。
 
-1. 获取基于 `Java` 和 `SpringBoot` 开发的后端 [youlai-boot](https://gitee.com/youlaiorg/youlai-boot.git) 源码。
-2. 根据后端工程的说明文档 [README.md](https://gitee.com/youlaiorg/youlai-boot#%E9%A1%B9%E7%9B%AE%E8%BF%90%E8%A1%8C) 完成本地启动。
-3. 修改 `.env.development` 文件中的 `VITE_APP_API_URL` 的值，将其从 https://api.youlai.tech 更改为 http://localhost:8000 即可。
+1. 获取基于 `SpringCloudAlibaba` 和 `SpringBoot` 开发的后端 [lrcore-cloud](https://github.com/lQIgithub/lrcore-cloud-platform.git) 源码。
+2. 根据后端工程的说明文档 [README.md](https://github.com/lQIgithub/lrcore-cloud-platform/blob/main/README.md) 完成本地启动。
+3. 修改 `.env.development` 文件中的 `VITE_APP_API_URL` 的值，将值设置为 http://localhost:10801 即可。
 
 ## 注意事项
 
@@ -216,32 +191,19 @@ server {
 
 ## 项目统计
 
-![](https://repobeats.axiom.co/api/embed/aa7cca3d6fa9c308fc659fa6e09af9a1910506c3.svg "Repobeats analytics image")
 
 Thanks to all the contributors!
 感谢所有的贡献者！
 
-[![contributors](https://contrib.rocks/image?repo=youlaitech/vue3-element-admin)](https://github.com/youlaitech/vue3-element-admin/graphs/contributors)
-
 ---
-
+## 联系方式
+添加时， 请备注来源
 <table align="center">
   <tr>
     <td align="center">
-      <img src="./public/images/qrcode/wechat-official.png" height="180" alt="公众号「有来技术」"><br>
-      <sub>公众号「有来技术」</sub>
-    </td>
-    <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
-    <td align="center">
-      <img src="./public/images/qrcode/wechat-mp.jpg" height="180" alt="小程序「有来技术」"><br>
-      <sub>小程序「有来技术」</sub>
-    </td>
-    <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
-    <td align="center">
       <img src="./public/images/qrcode/wechat-personal.png" height="180" alt="添加作者微信"><br>
-      <sub>添加作者微信</sub>
+      <sub>作者微信 或 15085945045</sub>
     </td>
   </tr>
 </table>
-
 <p align="center"><em>技术交流 · 问题反馈 · 商务合作</em></p>
