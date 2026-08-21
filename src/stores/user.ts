@@ -22,9 +22,9 @@ export const useUserStore = defineStore("user", () => {
    * 登录
    */
   async function login(loginRequest: LoginRequest): Promise<void> {
-    const {
-      data: { accessToken, refreshToken },
-    } = await AuthAPI.login(loginRequest);
+    // 注意：axios 响应拦截器已解包 ApiResult，resolve 的即是 data 字段（TokenDto），
+    // 不能再多解一层 { data: ... }（否则 accessToken 恒为 undefined，登录成功但不跳转）
+    const { accessToken, refreshToken } = await AuthAPI.login(loginRequest);
     rememberMe.value = loginRequest.rememberMe ?? false;
     AuthStorage.setTokens(accessToken, refreshToken, rememberMe.value);
   }

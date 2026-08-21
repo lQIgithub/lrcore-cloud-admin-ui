@@ -1,10 +1,10 @@
-import type {RouteRecordRaw} from "vue-router";
-import router, {constantRoutes} from "@/router";
-import {store} from "@/stores";
-import {useUserStoreHook} from "@/stores/user";
-import {isExternal} from "@/utils";
+import type { RouteRecordRaw } from "vue-router";
+import router, { constantRoutes } from "@/router";
+import { store } from "@/stores";
+import { useUserStoreHook } from "@/stores/user";
+import { isExternal } from "@/utils";
 
-import type {RouteItem} from "@/api/system/menu";
+import type { RouteItem } from "@/api/system/menu";
 import MenuAPI from "@/api/system/menu";
 
 const modules = import.meta.glob("../views/**/*.vue");
@@ -20,8 +20,11 @@ export const usePermissionStore = defineStore("permission", () => {
    */
   async function generateRoutes(): Promise<RouteRecordRaw[]> {
     try {
+      // 注意：axios 响应拦截器已解包 ApiResult，resolve 的即是 data 字段（路由数组），
+      // 不能再多取一层 .data（否则 transformRoutes(undefined) 抛 TypeError，
+      // 路由守卫 catch 后 resetAllState 弹回登录页）
       const routeData = await MenuAPI.getRoutes();
-      const menuRoutes = transformRoutes(routeData.data);
+      const menuRoutes = transformRoutes(routeData);
       const registerRoutes = filterRoutes(menuRoutes);
 
       routes.value = [...constantRoutes, ...menuRoutes];
@@ -124,13 +127,13 @@ export const usePermissionStore = defineStore("permission", () => {
  */
 const transformRoutes = (routes: RouteItem[], isTopLevel: boolean = true): RouteRecordRaw[] => {
   return routes.map((route) => {
-    const {children, ...args} = route;
+    const { children, ...args } = route;
     const componentPath = route.component;
 
     // 非顶层目录壳去掉 Layout 组件，仅保留路由结构
     const resolvedComponent = isTopLevel || componentPath !== "Layout" ? componentPath : undefined;
 
-    const normalizedRoute = {...args} as RouteRecordRaw;
+    const normalizedRoute = { ...args } as RouteRecordRaw;
 
     if (!resolvedComponent) {
       normalizedRoute.component = undefined;
@@ -171,7 +174,7 @@ function filterRoutes(routes: RouteRecordRaw[]): RouteRecordRaw[] {
   return routes.reduce<RouteRecordRaw[]>((result, route) => {
     if (isExternal(route.path)) return result;
 
-    const filtered = {...route};
+    const filtered = { ...route };
     const children = route.children ? filterRoutes(route.children) : [];
 
     if (children.length > 0) {

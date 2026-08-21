@@ -47,7 +47,7 @@ http.interceptors.request.use(
 );
 
 http.interceptors.response.use(
-  (response: AxiosResponse<ApiResult>): AxiosResponse | any => {
+  async (response: AxiosResponse<ApiResult>): Promise<AxiosResponse | any> => {
     const { responseType } = response.config;
     const needEncrypt = response.headers["x-captcha-type"] === "image";
     // 二进制数据直接透传
@@ -57,6 +57,28 @@ http.interceptors.response.use(
     const { code, data, success, message } = response.data;
     console.debug("code:{}, success:{}, message:{}", code, success, message);
     if (!success) {
+      // 平台网关/资源服务器把 401 以「HTTP 200 + code:'401'」形式返回，
+      // axios 不会进入下方错误分支，需在此识别为“未登录/令牌过期”：
+      // 先尝试单飞刷新 token 并重放请求，失败才重定向登录页
+      if (code === "401") {
+        const config = response.config as InternalAxiosRequestConfig;
+        if (!config || retriedRequests.has(config)) {
+          await redirectToLogin("登录状态已过期，请重新登录");
+          return Promise.reject(new Error("Token Invalid"));
+        }
+
+        retriedRequests.add(config);
+
+        try {
+          const userStore = useUserStoreHook();
+          await userStore.refreshTokenOnce();
+          config.headers.set("Authorization", `Bearer ${AuthStorage.getAccessToken()}`);
+          return http(config);
+        } catch {
+          await redirectToLogin("登录状态已过期，请重新登录");
+          return Promise.reject(new Error("Token refresh failed"));
+        }
+      }
       ElMessage.error(message || "系统出错");
       return Promise.reject(new Error(message || "系统出错"));
     }
