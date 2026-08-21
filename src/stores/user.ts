@@ -2,7 +2,13 @@ import { store } from "@/stores";
 
 import AuthAPI from "@/api/auth";
 import UserAPI from "@/api/system/user";
-import type { LoginRequest } from "@/api/auth";
+import type {
+  LoginRequest,
+  LoginResult,
+  SocialCallbackResult,
+  SocialLoginType,
+  SmsLoginRequest,
+} from "@/api/auth";
 import type { UserInfo } from "@/api/system/user";
 
 import { AuthStorage } from "@/utils/auth";
@@ -10,7 +16,6 @@ import { usePermissionStoreHook } from "@/stores/permission";
 import { useDictStoreHook } from "@/stores/dict";
 import { useTagsViewStore } from "@/stores";
 import { cleanupSseServices } from "@/composables";
-import { log } from "node:console";
 
 export const useUserStore = defineStore("user", () => {
   // 用户信息
@@ -19,14 +24,68 @@ export const useUserStore = defineStore("user", () => {
   const rememberMe = ref(AuthStorage.getRememberMe());
 
   /**
-   * 登录
+   * 应用登录结果（保存令牌并更新“记住我”状态）
+   *
+   * 注意：axios 响应拦截器已解包 ApiResult，resolve 的即是 data 字段（TokenDto），
+   * 不能再多解一层 { data: ... }（否则 accessToken 恒为 undefined，登录成功但不跳转）
+   */
+  function applyLoginResult(
+    result: Pick<LoginResult, "accessToken" | "refreshToken">,
+    keepRememberMe: boolean
+  ): void {
+    rememberMe.value = keepRememberMe;
+    AuthStorage.setTokens(result.accessToken, result.refreshToken, rememberMe.value);
+  }
+
+  /**
+   * 登录（用户名 + 密码）
    */
   async function login(loginRequest: LoginRequest): Promise<void> {
-    // 注意：axios 响应拦截器已解包 ApiResult，resolve 的即是 data 字段（TokenDto），
-    // 不能再多解一层 { data: ... }（否则 accessToken 恒为 undefined，登录成功但不跳转）
-    const { accessToken, refreshToken } = await AuthAPI.login(loginRequest);
-    rememberMe.value = loginRequest.rememberMe ?? false;
-    AuthStorage.setTokens(accessToken, refreshToken, rememberMe.value);
+    const result = await AuthAPI.login(loginRequest);
+    applyLoginResult(result, loginRequest.rememberMe ?? false);
+  }
+
+  /**
+   * 登录（短信验证码）
+   */
+  async function loginBySms(smsRequest: SmsLoginRequest): Promise<void> {
+    const result = await AuthAPI.loginBySms(smsRequest);
+    applyLoginResult(result, smsRequest.rememberMe ?? false);
+  }
+
+  /**
+   * 登录（第三方 OAuth：微信 / QQ / GitHub / Gitee）
+   */
+  /**
+   * 第三方扫码回调登录
+   *
+   * - 已绑定：写入平台令牌并返回结果（bound=true + token）
+   * - 未绑定（首次）：返回 pending 信息（bound=false + pendingToken/openId/昵称），
+   *   由调用方展示绑定表单，提交后走 socialBind
+   */
+  async function socialCallbackLogin(
+    platform: SocialLoginType,
+    code: string,
+    state: string
+  ): Promise<SocialCallbackResult> {
+    const result = await AuthAPI.socialCallback({ platform, code, state });
+    if (result.bound && result.token) {
+      applyLoginResult(result.token, AuthStorage.getRememberMe());
+    }
+    return result;
+  }
+
+  /**
+   * 第三方账号绑定并登录（首次扫码，未绑定场景）
+   */
+  async function socialBind(
+    pendingToken: string,
+    platform: SocialLoginType,
+    username: string,
+    password: string
+  ): Promise<void> {
+    const token = await AuthAPI.socialBind({ pendingToken, platform, username, password });
+    applyLoginResult(token, AuthStorage.getRememberMe());
   }
 
   let refreshPromise: Promise<void> | null = null;
@@ -114,6 +173,9 @@ export const useUserStore = defineStore("user", () => {
     rememberMe,
     isLoggedIn: () => !!AuthStorage.getAccessToken(),
     login,
+    loginBySms,
+    socialCallbackLogin,
+    socialBind,
     logout,
     getUserInfo,
     resetAllState,

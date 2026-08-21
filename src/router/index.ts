@@ -24,6 +24,13 @@ export const constantRoutes: RouteRecordRaw[] = [
   },
 
   {
+    path: "/sso/callback",
+    name: "SsoCallback",
+    component: () => import("@/views/sso/callback.vue"),
+    meta: { hidden: true, title: "第三方登录" },
+  },
+
+  {
     path: "/",
     name: "/",
     component: Layout,

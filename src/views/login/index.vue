@@ -56,7 +56,23 @@
               <h2 class="login-card__title">欢迎回来</h2>
               <p class="login-card__desc">请完成身份验证后进入系统</p>
 
+              <div class="login-tabs" role="tablist" aria-label="登录方式">
+                <button
+                  v-for="tab in loginTabs"
+                  :key="tab.key"
+                  type="button"
+                  role="tab"
+                  class="login-tabs__item"
+                  :class="{ 'is-active': loginType === tab.key }"
+                  :aria-selected="loginType === tab.key"
+                  @click="loginType = tab.key"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
+
               <el-form
+                v-show="loginType === 'account'"
                 ref="loginFormRef"
                 :model="loginFormData"
                 :rules="loginRules"
@@ -123,17 +139,78 @@
                 </el-button>
               </el-form>
 
-              <div class="login-alt">
+              <el-form
+                v-show="loginType === 'sms'"
+                ref="smsFormRef"
+                :model="smsFormData"
+                :rules="smsRules"
+                size="large"
+                :validate-on-rule-change="false"
+              >
+                <el-form-item prop="phone">
+                  <el-input
+                    v-model.trim="smsFormData.phone"
+                    placeholder="手机号"
+                    :prefix-icon="PhoneIcon"
+                    maxlength="11"
+                  />
+                </el-form-item>
+
+                <el-form-item prop="smsCode">
+                  <div class="sms-code-row">
+                    <el-input
+                      v-model.trim="smsFormData.smsCode"
+                      placeholder="短信验证码"
+                      class="sms-code-row__input"
+                      :prefix-icon="SmsIcon"
+                      maxlength="6"
+                      @keyup.enter="handleSmsLoginSubmit"
+                    />
+                    <el-button
+                      class="sms-code-row__btn"
+                      :loading="smsSending"
+                      :disabled="smsCountdown > 0"
+                      @click="handleSendSmsCode"
+                    >
+                      {{ smsCountdown > 0 ? `${smsCountdown}s 后重发` : "获取验证码" }}
+                    </el-button>
+                  </div>
+                </el-form-item>
+
+                <el-button
+                  :loading="smsLoading"
+                  type="primary"
+                  size="large"
+                  class="login-btn"
+                  @click="handleSmsLoginSubmit"
+                >
+                  登录
+                </el-button>
+              </el-form>
+
+              <div v-if="loginType === 'wechat'" class="login-card__form login-card__form--wechat">
+                <WeChatLoginPanel />
+              </div>
+
+              <div v-show="loginType !== 'wechat'" class="login-alt">
                 <div class="login-alt__divider">其他登录方式</div>
                 <div class="login-alt__buttons">
-                  <button class="login-alt__btn">
-                    <span class="login-alt__icon i-svg:qr-code" />
-                    扫码登录
-                  </button>
-                  <button class="login-alt__btn">
-                    <span class="login-alt__icon i-svg:security" />
-                    统一认证
-                  </button>
+                  <el-tooltip
+                    v-for="social in socialLogins"
+                    :key="social.type"
+                    :content="social.label"
+                    placement="top"
+                  >
+                    <button
+                      type="button"
+                      class="login-social"
+                      :class="`login-social--${social.type}`"
+                      :aria-label="social.label"
+                      @click="handleSocialLogin(social.type)"
+                    >
+                      <span class="login-social__icon" :class="`i-svg:${social.icon}`" />
+                    </button>
+                  </el-tooltip>
                 </div>
               </div>
             </div>
@@ -156,15 +233,17 @@
 <script setup lang="ts">
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
-import { Clock, Lock, Loading, Refresh, User } from "@element-plus/icons-vue";
+import { Clock, Iphone, Lock, Loading, Message, Refresh, User } from "@element-plus/icons-vue";
 import type { FormInstance } from "element-plus";
 import AuthAPI from "@/api/auth";
-import type { LoginRequest } from "@/api/auth";
+import type { LoginRequest, SmsLoginRequest, SocialLoginType } from "@/api/auth";
 import router from "@/router";
 import { useUserStore } from "@/stores";
 import { AuthStorage } from "@/utils/auth";
 import { appConfig } from "@/settings";
+import { STORAGE_KEYS } from "@/constants";
 import ThemeSwitch from "@/components/ThemeSwitch/index.vue";
+import WeChatLoginPanel from "@/views/login/components/WeChatLogin.vue";
 import ResetPwd from "./components/ResetPwd.vue";
 import logo from "@/assets/images/logo.png";
 
@@ -180,6 +259,19 @@ const codeLoading = ref(false);
 
 const UserIcon = markRaw(User);
 const LockIcon = markRaw(Lock);
+const PhoneIcon = markRaw(Iphone);
+const SmsIcon = markRaw(Message);
+
+/** 登录方式：account-账号密码 / sms-短信验证码 / wechat-微信扫码 */
+type LoginType = "account" | "sms" | "wechat";
+
+const loginType = ref<LoginType>("account");
+
+const loginTabs: { key: LoginType; label: string }[] = [
+  { key: "account", label: "账号登录" },
+  { key: "sms", label: "短信登录" },
+  { key: "wechat", label: "微信登录" },
+];
 
 const loginFormData = ref<LoginRequest>({
   username: "admin",
@@ -239,7 +331,120 @@ function showForm(type: "resetPwd") {
   component.value = type;
 }
 
-onMounted(() => getCaptcha());
+/* ---------------------------- 短信验证码登录 ---------------------------- */
+
+const smsFormRef = ref<FormInstance>();
+const smsSending = ref(false);
+const smsLoading = ref(false);
+const smsCountdown = ref(0);
+let smsTimer: ReturnType<typeof setInterval> | null = null;
+
+const smsFormData = ref<SmsLoginRequest>({
+  phone: "",
+  smsCode: "",
+});
+
+const smsRules = computed(() => ({
+  phone: [
+    { required: true, trigger: "blur", message: "请输入手机号" },
+    { pattern: /^1[3-9]\d{9}$/, message: "手机号格式不正确", trigger: "blur" },
+  ],
+  smsCode: [
+    { required: true, trigger: "blur", message: "请输入短信验证码" },
+    { pattern: /^\d{4,8}$/, message: "验证码为 4-8 位数字", trigger: "blur" },
+  ],
+}));
+
+function startSmsCountdown(seconds = 60) {
+  stopSmsCountdown();
+  smsCountdown.value = seconds;
+  smsTimer = setInterval(() => {
+    smsCountdown.value -= 1;
+    if (smsCountdown.value <= 0) stopSmsCountdown();
+  }, 1000);
+}
+
+function stopSmsCountdown() {
+  if (smsTimer) {
+    clearInterval(smsTimer);
+    smsTimer = null;
+  }
+  smsCountdown.value = 0;
+}
+
+async function handleSendSmsCode() {
+  const valid = await smsFormRef.value?.validateField("phone").then(
+    () => true,
+    () => false
+  );
+  if (!valid) return;
+
+  smsSending.value = true;
+  try {
+    await AuthAPI.sendSmsCode(smsFormData.value.phone);
+    ElMessage.success("验证码已发送，请注意查收");
+    startSmsCountdown();
+  } finally {
+    smsSending.value = false;
+  }
+}
+
+async function handleSmsLoginSubmit() {
+  const valid = await smsFormRef.value?.validate().then(
+    () => true,
+    () => false
+  );
+  if (!valid) return;
+
+  smsLoading.value = true;
+  try {
+    await userStore.loginBySms(smsFormData.value).then(async () => {
+      const redirectPath = (route.query.redirect as string) || "/";
+      await router.push(decodeURIComponent(redirectPath));
+    });
+  } finally {
+    smsLoading.value = false;
+  }
+}
+
+/* ---------------------------- 第三方登录 ---------------------------- */
+
+/** 第三方登录类型配置（图标来自 src/assets/icons，i-svg: 前缀引用） */
+const socialLogins: { type: SocialLoginType; label: string; icon: string }[] = [
+  { type: "wechat", label: "微信登录", icon: "wechat" },
+  { type: "qq", label: "QQ 登录", icon: "qq" },
+  { type: "github", label: "GitHub 登录", icon: "github" },
+  { type: "gitee", label: "Gitee 登录", icon: "gitee" },
+];
+
+/**
+ * 发起第三方登录：
+ * - wechat：切换到微信扫码 Tab（iframe 渲染 qrconnect 二维码页）
+ * - 其他平台：获取平台授权页 URL 后整页跳转，授权完成后平台重定向到
+ *   前端回调路由 /#/sso/callback?code=..&state=..（见 views/sso/callback.vue）
+ */
+async function handleSocialLogin(type: SocialLoginType) {
+  if (type === "wechat") {
+    loginType.value = "wechat";
+    return;
+  }
+
+  try {
+    const { authorizeUrl } = await AuthAPI.socialAuthorize(type);
+    // 回调页据此确定平台（第三方重定向 URL 无法再携带查询参数）
+    sessionStorage.setItem(STORAGE_KEYS.SOCIAL_PLATFORM, type);
+    window.location.href = authorizeUrl;
+  } catch {
+    sessionStorage.removeItem(STORAGE_KEYS.SOCIAL_PLATFORM);
+    // 业务错误提示（如“第三方登录未启用：GitHub”）由请求拦截器统一弹出
+  }
+}
+
+onMounted(() => {
+  getCaptcha();
+});
+
+onBeforeUnmount(() => stopSmsCountdown());
 </script>
 
 <style lang="scss" scoped>
@@ -586,6 +791,60 @@ $input-h: 44px;
   }
 }
 
+.login-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  background: var(--el-fill-color-light);
+  border-radius: 10px;
+
+  &__item {
+    flex: 1;
+    height: 34px;
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-secondary;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    transition:
+      color 0.2s,
+      background 0.2s,
+      box-shadow 0.2s;
+
+    &:hover {
+      color: $text-primary;
+    }
+
+    &.is-active {
+      font-weight: 600;
+      color: $primary;
+      background: var(--el-bg-color);
+      box-shadow: 0 2px 8px rgba(39 50 72 / 10%);
+    }
+  }
+}
+
+.sms-code-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__btn {
+    flex-shrink: 0;
+    width: 118px;
+    height: $input-h;
+    font-size: 13px;
+  }
+}
+
 .login-alt {
   margin-top: 28px;
 
@@ -608,38 +867,54 @@ $input-h: 44px;
 
   &__buttons {
     display: flex;
-    gap: 12px;
-  }
-
-  &__btn {
-    display: flex;
-    flex: 1;
-    gap: 8px;
-    align-items: center;
+    gap: 18px;
     justify-content: center;
-    height: 44px;
-    padding: 0;
-    font-size: 13px;
-    color: $text-secondary;
-    cursor: pointer;
-    background: transparent;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: 8px;
-    transition:
-      color 0.2s,
-      background 0.2s,
-      border-color 0.2s;
+  }
+}
 
-    &:hover {
-      color: $primary;
-      background: rgba($primary, 0.04);
-      border-color: rgba($primary, 0.28);
-    }
+.login-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: $text-secondary;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 50%;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
   }
 
   &__icon {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &--wechat:hover {
+    color: #07c160;
+    border-color: rgba(7 193 96 / 45%);
+  }
+
+  &--qq:hover {
+    color: #12b7f5;
+    border-color: rgba(18 183 245 / 45%);
+  }
+
+  &--github:hover {
+    color: #24292f;
+    border-color: rgba(36 41 47 / 45%);
+  }
+
+  &--gitee:hover {
+    color: #c71d23;
+    border-color: rgba(199 29 35 / 45%);
   }
 }
 
@@ -712,6 +987,15 @@ $input-h: 44px;
 
 .dark .login-alt__divider {
   color: rgb(255 255 255 / 20%);
+}
+
+.dark .login-social {
+  color: rgb(255 255 255 / 65%);
+
+  &--github:hover {
+    color: #e6e8eb;
+    border-color: rgba(230 232 235 / 45%);
+  }
 }
 
 .fade-slide-enter-active,

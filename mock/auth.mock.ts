@@ -1,5 +1,15 @@
 import { defineMock } from "./base";
 
+/** 模拟登录令牌数据（短信登录 / 第三方登录复用） */
+const mockTokenData = {
+  accessToken:
+    "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImRlcHRJZCI6MSwiZGF0YVNjb3BlIjoxLCJ1c2VySWQiOjIsImlhdCI6MTcyODE5MzA1MiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9BRE1JTiJdLCJqdGkiOiJhZDg3NzlhZDZlYWY0OWY3OTE4M2ZmYmI5OWM4MjExMSJ9.58YHwL3sNNC22jyAmOZeSm-7MITzfHb_epBIz7LvWeA",
+  tokenType: "Bearer",
+  refreshToken:
+    "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImRlcHRJZCI6MSwiZGF0YVNjb3BlIjoxLCJ1c2VySWQiOjIsImlhdCI6MTcyODE5MzA1MiwiYXV0aG9yaXRpZXMiOlsiUk9MRV9BRE1JTiJdLCJqdGkiOiJhZDg3NzlhZDZlYWY0OWY3OTE4M2ZmYmI5OWM4MjExMSJ9.58YHwL3sNNC22jyAmOZeSm-7MITzfHb_epBIz7LvWeA",
+  expiresIn: 7200,
+};
+
 export default defineMock([
   {
     url: "auth/captcha",
@@ -56,6 +66,52 @@ export default defineMock([
       code: "00000",
       data: {},
       msg: "string",
+    },
+  },
+
+  {
+    url: "auth/sms-code",
+    method: ["POST"],
+    body: {
+      code: "00000",
+      data: null,
+      msg: "验证码已发送",
+    },
+  },
+
+  {
+    url: "auth/sms-login",
+    method: ["POST"],
+    body: {
+      code: "00000",
+      data: mockTokenData,
+      msg: "一切ok",
+    },
+  },
+
+  {
+    url: "auth/social/authorize",
+    method: ["GET"],
+    body: (req) => {
+      const state = (req.query?.state as string) ?? "";
+      return {
+        code: "00000",
+        data: {
+          // Mock 环境下返回示例授权地址，真实环境由后端按 clientType 组装
+          redirectUrl: `https://example.com/oauth/authorize?mock=true&state=${state}`,
+        },
+        msg: "一切ok",
+      };
+    },
+  },
+
+  {
+    url: "auth/social-login",
+    method: ["POST"],
+    body: {
+      code: "00000",
+      data: mockTokenData,
+      msg: "一切ok",
     },
   },
 ]);
