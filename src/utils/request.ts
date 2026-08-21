@@ -1,12 +1,12 @@
-import axios, {type AxiosResponse, type InternalAxiosRequestConfig} from "axios";
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import qs from "qs";
 
-import {ApiCodeEnum} from "@/enums/api";
-import {useUserStoreHook} from "@/stores/user";
-import {usePermissionStoreHook} from "@/stores/permission";
-import {AuthStorage, redirectToLogin} from "@/utils/auth";
-import {decryptResponseData, encryptRequestData} from "@/utils";
-import type {ApiResult} from "@/api/common";
+import { ApiCodeEnum } from "@/enums/api";
+import { useUserStoreHook } from "@/stores/user";
+import { usePermissionStoreHook } from "@/stores/permission";
+import { AuthStorage, redirectToLogin } from "@/utils/auth";
+import { decryptResponseData, encryptRequestData } from "@/utils";
+import type { ApiResult } from "@/api/common";
 
 // 防止同一请求在 token 刷新后重复进入重试，导致死循环
 const retriedRequests = new WeakSet<InternalAxiosRequestConfig>();
@@ -14,9 +14,9 @@ const retriedRequests = new WeakSet<InternalAxiosRequestConfig>();
 const http = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API,
   timeout: 50000,
-  headers: {"Content-Type": "application/json;charset=utf-8"},
+  headers: { "Content-Type": "application/json;charset=utf-8" },
   // 数组参数序列化为 ids=1&ids=2，而非 ids[]=1&ids[]=2
-  paramsSerializer: (params) => qs.stringify(params, {arrayFormat: "repeat"}),
+  paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
 });
 
 http.interceptors.request.use(
@@ -37,7 +37,7 @@ http.interceptors.request.use(
     }
 
     try {
-      config.data = encryptRequestData(config.data);
+      // config.data = encryptRequestData(config.data);
     } catch (error) {
       console.error("请求数据加密失败:", error);
     }
@@ -48,35 +48,35 @@ http.interceptors.request.use(
 
 http.interceptors.response.use(
   (response: AxiosResponse<ApiResult>): AxiosResponse | any => {
-    const {responseType} = response.config;
+    const { responseType } = response.config;
     const needEncrypt = response.headers["x-captcha-type"] === "image";
     // 二进制数据直接透传
     if (responseType === "blob" || responseType === "arraybuffer") {
       return response;
     }
-    const {code, data, success, message} = response.data;
+    const { code, data, success, message } = response.data;
     console.debug("code:{}, success:{}, message:{}", code, success, message);
     if (!success) {
       ElMessage.error(message || "系统出错");
       return Promise.reject(new Error(message || "系统出错"));
     }
-    if (!needEncrypt) {
-      const decryptedData = decryptResponseData(data);
-      console.debug("后端返回解密内容解密后的数据:", decryptedData);
-      return decryptedData;
-    }
+    // if (!needEncrypt) {
+    //   const decryptedData = decryptResponseData(data);
+    //   console.debug("后端返回解密内容解密后的数据:", decryptedData);
+    //   return decryptedData;
+    // }
     return data;
   },
 
   async (error) => {
-    const {config, response} = error;
+    const { config, response } = error;
 
     if (!response) {
       ElMessage.error("网络连接失败");
       return Promise.reject(error);
     }
 
-    const {code, message} = response.data as ApiResult;
+    const { code, message } = response.data as ApiResult;
 
     // Token 过期
     if (code === ApiCodeEnum.ACCESS_TOKEN_INVALID) {
