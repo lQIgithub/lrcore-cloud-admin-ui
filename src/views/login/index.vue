@@ -454,8 +454,20 @@ async function handleSocialLogin(type: SocialLoginType) {
  * 登录成功后的回跳目标沿用登录页 redirect 参数。
  */
 async function handleSsoLogin() {
-  const redirectPath = (route.query.redirect as string) || "/";
-  await startSsoLogin(decodeURIComponent(redirectPath));
+  const rawRedirect = (route.query.redirect as string) || "/";
+  let redirectPath: string;
+  try {
+    redirectPath = decodeURIComponent(rawRedirect);
+  } catch {
+    redirectPath = "/";
+  }
+  try {
+    await startSsoLogin(redirectPath);
+  } catch (e) {
+    // 不静默吞错（例如非安全上下文下的异常）：给出可见提示，便于定位
+    console.error("[SSO] 发起单点登录失败:", e);
+    ElMessage.error("发起单点登录失败：" + (e instanceof Error ? e.message : String(e)));
+  }
 }
 
 onMounted(() => {

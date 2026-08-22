@@ -85,6 +85,27 @@ describe("PKCE", () => {
     const expected = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
     await expect(sha256Challenge(verifier)).resolves.toBe(expected);
   });
+
+  it("crypto.subtle 不可用（非安全上下文/局域网 IP 访问）时走纯 JS 兜底且结果一致", async () => {
+    const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+    const expected = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+    // 临时隐藏 subtle，模拟 http://<LAN IP> 访问场景
+    const original = globalThis.crypto?.subtle;
+    Object.defineProperty(globalThis.crypto, "subtle", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      await expect(sha256Challenge(verifier)).resolves.toBe(expected);
+    } finally {
+      Object.defineProperty(globalThis.crypto, "subtle", {
+        value: original,
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
 });
 
 describe("buildAuthorizeUrl", () => {
