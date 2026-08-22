@@ -176,7 +176,8 @@ defineExpose({
 });
 
 /** 切换连线样式：将画布中所有连线转换为新样式，并自动优化排版 */
-async function handleEdgeTypeChange(type: "polyline" | "bezier" | "line") {
+async function handleEdgeTypeChange(val: string | number | boolean | undefined) {
+  const type = (val as "polyline" | "bezier" | "line") ?? store.edgeType;
   // 1. 更新全局边类型状态
   store.setEdgeType(type);
 

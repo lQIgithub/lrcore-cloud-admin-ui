@@ -270,7 +270,7 @@ async function fetchStatistics() {
 async function fetchProcessOptions() {
   try {
     const res = await processDefinitionApi.list();
-    if (res.code === 200 && res.data) {
+    if (Number(res.code) === 200 && res.data) {
       processOptions.value = res.data;
     }
   } catch (e) {

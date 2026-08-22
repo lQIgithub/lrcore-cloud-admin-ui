@@ -31,6 +31,16 @@ export const constantRoutes: RouteRecordRaw[] = [
   },
 
   {
+    // SSO 单点登录（OIDC 授权码 + PKCE）回调：
+    // 注册的 redirect_uri 为 history 形态（origin + 本路径，无 #），
+    // main.ts 在应用启动前将其归一化为 hash URL 后由本路由承接
+    path: "/sso/oauth-callback",
+    name: "SsoOauthCallback",
+    component: () => import("@/views/sso/oauth-callback.vue"),
+    meta: { hidden: true, title: "单点登录" },
+  },
+
+  {
     path: "/",
     name: "/",
     component: Layout,

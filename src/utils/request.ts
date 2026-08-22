@@ -1,6 +1,7 @@
 import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import qs from "qs";
 
+import router from "@/router";
 import { ApiCodeEnum } from "@/enums/api";
 import { useUserStoreHook } from "@/stores/user";
 import { usePermissionStoreHook } from "@/stores/permission";
@@ -62,6 +63,14 @@ http.interceptors.response.use(
       // 先尝试单飞刷新 token 并重放请求，失败才重定向登录页
       if (code === "401") {
         const config = response.config as InternalAxiosRequestConfig;
+        const userStore = useUserStoreHook();
+
+        // SAS 新轨（公共客户端）无 refresh_token：401 直接静默再授权（整页跳转，不返回）
+        if (userStore.isSas()) {
+          await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
+          return Promise.reject(new Error("Token Invalid (sso reauth)"));
+        }
+
         if (!config || retriedRequests.has(config)) {
           await redirectToLogin("登录状态已过期，请重新登录");
           return Promise.reject(new Error("Token Invalid"));
@@ -70,7 +79,6 @@ http.interceptors.response.use(
         retriedRequests.add(config);
 
         try {
-          const userStore = useUserStoreHook();
           await userStore.refreshTokenOnce();
           config.headers.set("Authorization", `Bearer ${AuthStorage.getAccessToken()}`);
           return http(config);
@@ -102,6 +110,14 @@ http.interceptors.response.use(
 
     // Token 过期
     if (code === ApiCodeEnum.ACCESS_TOKEN_INVALID) {
+      const userStore = useUserStoreHook();
+
+      // SAS 新轨（公共客户端）无 refresh_token：401 直接静默再授权（整页跳转，不返回）
+      if (userStore.isSas()) {
+        await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
+        return Promise.reject(new Error("Token Invalid (sso reauth)"));
+      }
+
       if (!config || retriedRequests.has(config)) {
         await redirectToLogin("登录已过期，请重新登录");
         return Promise.reject(new Error("Token Invalid"));
@@ -110,7 +126,6 @@ http.interceptors.response.use(
       retriedRequests.add(config);
 
       try {
-        const userStore = useUserStoreHook();
         await userStore.refreshTokenOnce();
 
         const token = AuthStorage.getAccessToken();

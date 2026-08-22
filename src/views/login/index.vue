@@ -193,6 +193,10 @@
               </div>
 
               <div v-show="loginType !== 'wechat'" class="login-alt">
+                <button type="button" class="login-sso" @click="handleSsoLogin">
+                  <el-icon :size="16"><Key /></el-icon>
+                  SSO 单点登录
+                </button>
                 <div class="login-alt__divider">其他登录方式</div>
                 <div class="login-alt__buttons">
                   <el-tooltip
@@ -233,13 +237,14 @@
 <script setup lang="ts">
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
-import { Clock, Iphone, Lock, Loading, Message, Refresh, User } from "@element-plus/icons-vue";
+import { Clock, Iphone, Key, Lock, Loading, Message, Refresh, User } from "@element-plus/icons-vue";
 import type { FormInstance } from "element-plus";
 import AuthAPI from "@/api/auth";
 import type { LoginRequest, SmsLoginRequest, SocialLoginType } from "@/api/auth";
 import router from "@/router";
 import { useUserStore } from "@/stores";
 import { AuthStorage } from "@/utils/auth";
+import { startSsoLogin } from "@/utils/sso";
 import { appConfig } from "@/settings";
 import { STORAGE_KEYS } from "@/constants";
 import ThemeSwitch from "@/components/ThemeSwitch/index.vue";
@@ -438,6 +443,19 @@ async function handleSocialLogin(type: SocialLoginType) {
     sessionStorage.removeItem(STORAGE_KEYS.SOCIAL_PLATFORM);
     // 业务错误提示（如“第三方登录未启用：GitHub”）由请求拦截器统一弹出
   }
+}
+
+/* ---------------------------- SSO 单点登录（OIDC + PKCE） ---------------------------- */
+
+/**
+ * 发起 SSO 单点登录：
+ * 生成 PKCE/state 暂存后整页跳转授权服务器（lrcore-auth）授权端点，
+ * 认证完成后回到 /sso/oauth-callback 换码取令牌（见 views/sso/oauth-callback.vue）。
+ * 登录成功后的回跳目标沿用登录页 redirect 参数。
+ */
+async function handleSsoLogin() {
+  const redirectPath = (route.query.redirect as string) || "/";
+  await startSsoLogin(decodeURIComponent(redirectPath));
 }
 
 onMounted(() => {
@@ -845,6 +863,31 @@ $input-h: 44px;
   }
 }
 
+.login-sso {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $primary;
+  cursor: pointer;
+  background: rgba($primary, 0.05);
+  border: 1px dashed rgba($primary, 0.45);
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    color: #fff;
+    background: $primary;
+    border-color: $primary;
+    box-shadow: 0 8px 20px rgba($primary, 0.22);
+  }
+}
+
 .login-alt {
   margin-top: 28px;
 
@@ -983,6 +1026,17 @@ $input-h: 44px;
 
 .dark .login-footer {
   color: rgb(255 255 255 / 15%);
+}
+
+.dark .login-sso {
+  color: rgba(167 190 255 / 92%);
+  background: rgba($primary, 0.1);
+  border-color: rgba($primary, 0.4);
+
+  &:hover {
+    color: #fff;
+    background: $primary;
+  }
 }
 
 .dark .login-alt__divider {

@@ -31,6 +31,11 @@ export const STORAGE_KEYS = {
   REMEMBER_ME: `${APP_PREFIX}:auth:remember_me`,
   // 第三方登录：发起时记录平台，扫码回调页据此调用对应平台回调接口
   SOCIAL_PLATFORM: `${APP_PREFIX}:auth:social_platform`,
+  // SSO 单点登录（OIDC 授权码 + PKCE，公共客户端 web-admin-spa）
+  SSO_STATE: `${APP_PREFIX}:sso:state`,
+  SSO_CODE_VERIFIER: `${APP_PREFIX}:sso:code_verifier`,
+  SSO_REDIRECT: `${APP_PREFIX}:sso:redirect`,
+  SSO_ID_TOKEN: `${APP_PREFIX}:sso:id_token`,
 
   // 租户
   TENANT_ID: `${APP_PREFIX}:tenant:id`,

@@ -12,6 +12,7 @@ import type {
 import type { UserInfo } from "@/api/system/user";
 
 import { AuthStorage } from "@/utils/auth";
+import { SsoStorage, buildSsoLogoutUrl, isSasToken, startSsoSilentReauth } from "@/utils/sso";
 import { usePermissionStoreHook } from "@/stores/permission";
 import { useDictStoreHook } from "@/stores/dict";
 import { useTagsViewStore } from "@/stores";
@@ -35,6 +36,35 @@ export const useUserStore = defineStore("user", () => {
   ): void {
     rememberMe.value = keepRememberMe;
     AuthStorage.setTokens(result.accessToken, result.refreshToken, rememberMe.value);
+  }
+
+  /**
+   * 应用 SSO（SAS / OIDC）登录结果
+   *
+   * 与旧轨双令牌的区别：
+   * - 公共客户端授权码流程不签发 refresh_token（SAS 7.1），故 refresh 传空；
+   * - 额外保存 id_token（前通道登出 id_token_hint 用，与访问令牌同一“记住我”语义）。
+   */
+  function applySsoLogin(accessToken: string, idToken: string): void {
+    AuthStorage.setTokens(accessToken, "", AuthStorage.getRememberMe());
+    if (idToken) {
+      SsoStorage.setIdToken(idToken);
+    }
+  }
+
+  /** 当前访问令牌是否为 SAS（RS256）新轨令牌 */
+  function isSas(): boolean {
+    return isSasToken(AuthStorage.getAccessToken());
+  }
+
+  /**
+   * SSO 令牌过期的静默再授权（prompt=none 复用 AS 会话）。
+   *
+   * 触发整页跳转（不返回）；AS 会话存活时无感换码，失效时由 AS 引导重新登录。
+   * @param currentPath 当前系统内路由（成功后恢复）
+   */
+  async function silentSsoReauth(currentPath: string): Promise<void> {
+    await startSsoSilentReauth(currentPath);
   }
 
   /**
@@ -118,9 +148,22 @@ export const useUserStore = defineStore("user", () => {
   }
 
   /**
-   * 登出
+   * 登出（双轨）
+   *
+   * - SAS 新轨（RS256）：前通道登出——整页跳转 AS /connect/logout，
+   *   AS 销毁会话、按 principal 撤销全部授权并发放 back-channel logout_token
+   *   通知其他 RP，随后回跳本应用 /login；
+   * - 旧轨（HS512 双令牌）：调用 AuthAPI.logout() 撤销会话后本地清理。
    */
   async function logout(): Promise<void> {
+    if (isSas()) {
+      const idToken = SsoStorage.getIdToken();
+      resetAllState();
+      SsoStorage.clearAll();
+      // 整页跳转前通道登出（不等待返回）
+      window.location.href = buildSsoLogoutUrl(idToken);
+      return;
+    }
     await AuthAPI.logout();
     resetAllState();
   }
@@ -150,6 +193,7 @@ export const useUserStore = defineStore("user", () => {
    */
   function resetUserState(): void {
     AuthStorage.clearAuth();
+    SsoStorage.clearAll();
     userInfo.value = {} as UserInfo;
   }
 
@@ -172,10 +216,13 @@ export const useUserStore = defineStore("user", () => {
     userInfo,
     rememberMe,
     isLoggedIn: () => !!AuthStorage.getAccessToken(),
+    isSas,
     login,
     loginBySms,
     socialCallbackLogin,
     socialBind,
+    applySsoLogin,
+    silentSsoReauth,
     logout,
     getUserInfo,
     resetAllState,
