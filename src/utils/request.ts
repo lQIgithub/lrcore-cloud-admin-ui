@@ -9,9 +9,6 @@ import { AuthStorage, redirectToLogin } from "@/utils/auth";
 import { decryptResponseData, encryptRequestData } from "@/utils";
 import type { ApiResult } from "@/api/common";
 
-// 防止同一请求在 token 刷新后重复进入重试，导致死循环
-const retriedRequests = new WeakSet<InternalAxiosRequestConfig>();
-
 const http = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API,
   timeout: 50000,
@@ -60,32 +57,15 @@ http.interceptors.response.use(
     if (!success) {
       // 平台网关/资源服务器把 401 以「HTTP 200 + code:'401'」形式返回，
       // axios 不会进入下方错误分支，需在此识别为“未登录/令牌过期”：
-      // 先尝试单飞刷新 token 并重放请求，失败才重定向登录页
+      // SAS（公共客户端）无 refresh_token，401 直接静默再授权，失败/非 SAS 才重定向登录页
       if (code === "401") {
-        const config = response.config as InternalAxiosRequestConfig;
         const userStore = useUserStoreHook();
-
-        // SAS 新轨（公共客户端）无 refresh_token：401 直接静默再授权（整页跳转，不返回）
         if (userStore.isSas()) {
           await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
           return Promise.reject(new Error("Token Invalid (sso reauth)"));
         }
-
-        if (!config || retriedRequests.has(config)) {
-          await redirectToLogin("登录状态已过期，请重新登录");
-          return Promise.reject(new Error("Token Invalid"));
-        }
-
-        retriedRequests.add(config);
-
-        try {
-          await userStore.refreshTokenOnce();
-          config.headers.set("Authorization", `Bearer ${AuthStorage.getAccessToken()}`);
-          return http(config);
-        } catch {
-          await redirectToLogin("登录状态已过期，请重新登录");
-          return Promise.reject(new Error("Token refresh failed"));
-        }
+        await redirectToLogin("登录状态已过期，请重新登录");
+        return Promise.reject(new Error("Token Invalid"));
       }
       ElMessage.error(message || "系统出错");
       return Promise.reject(new Error(message || "系统出错"));
@@ -99,7 +79,7 @@ http.interceptors.response.use(
   },
 
   async (error) => {
-    const { config, response } = error;
+    const { response } = error;
 
     if (!response) {
       ElMessage.error("网络连接失败");
@@ -118,31 +98,7 @@ http.interceptors.response.use(
         return Promise.reject(new Error("Token Invalid (sso reauth)"));
       }
 
-      if (!config || retriedRequests.has(config)) {
-        await redirectToLogin("登录已过期，请重新登录");
-        return Promise.reject(new Error("Token Invalid"));
-      }
-
-      retriedRequests.add(config);
-
-      try {
-        await userStore.refreshTokenOnce();
-
-        const token = AuthStorage.getAccessToken();
-        if (token) {
-          config.headers.set("Authorization", `Bearer ${token}`);
-        }
-
-        return http(config);
-      } catch {
-        await redirectToLogin("登录已过期，请重新登录");
-        return Promise.reject(new Error("Token refresh failed"));
-      }
-    }
-
-    // Refresh token 失效
-    if (code === ApiCodeEnum.REFRESH_TOKEN_INVALID) {
-      await redirectToLogin("登录已过期，请重新登录", false);
+      await redirectToLogin("登录已过期，请重新登录");
       return Promise.reject(new Error("Token Invalid"));
     }
 

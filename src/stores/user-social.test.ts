@@ -14,12 +14,6 @@ vi.mock("@/api/auth", () => ({
     socialAuthorize: vi.fn(),
     socialCallback: vi.fn(),
     socialBind: vi.fn(),
-    login: vi.fn(),
-    loginBySms: vi.fn(),
-    sendSmsCode: vi.fn(),
-    switchTenant: vi.fn(),
-    refreshToken: vi.fn(),
-    logout: vi.fn(),
     getCaptcha: vi.fn(),
   },
 }));
@@ -36,11 +30,9 @@ vi.mock("@/api/system/user", () => ({
 vi.mock("@/utils/auth", () => ({
   AuthStorage: {
     getAccessToken: vi.fn(() => "test-access-token"),
-    getRefreshToken: vi.fn(() => "test-refresh-token"),
     setTokens: vi.fn(),
     getRememberMe: vi.fn(() => false),
-    setRememberMe: vi.fn(),
-    clear: vi.fn(),
+    clearAuth: vi.fn(),
   },
   redirectToLogin: vi.fn(),
   hasPerm: vi.fn(() => false),
@@ -76,11 +68,12 @@ import { useUserStore } from "@/stores/user";
 
 // ---------- 测试数据工厂 ----------
 
+/** 后端 SsoTokenDto（OAuth2 JSON 下划线契约） */
 const WECHAT_TOKEN = {
-  accessToken: "jwt-access",
-  refreshToken: "jwt-refresh",
-  expireIn: 1800000,
-  tokenType: "Bearer",
+  access_token: "jwt-access",
+  token_type: "Bearer",
+  expires_in: 1800,
+  scope: "openid profile",
 };
 
 function boundResult() {
@@ -108,7 +101,7 @@ describe("user store 第三方登录", () => {
     setActivePinia(createPinia());
   });
 
-  it("socialCallbackLogin：已绑定 → 写入平台令牌并返回结果", async () => {
+  it("socialCallbackLogin：已绑定 → 写入 SAS 令牌并返回结果", async () => {
     vi.mocked(AuthAPI.socialCallback).mockResolvedValue(boundResult() as never);
 
     const store = useUserStore();
@@ -120,9 +113,9 @@ describe("user store 第三方登录", () => {
       state: "state-1",
     });
     expect(result.bound).toBe(true);
+    // socialCallbackLogin 走 applySsoLogin，仅消费 access_token（刷新/过期等信息已不再返回）
     expect(AuthStorage.setTokens).toHaveBeenCalledWith(
-      WECHAT_TOKEN.accessToken,
-      WECHAT_TOKEN.refreshToken,
+      expect.stringContaining(WECHAT_TOKEN.access_token),
       false
     );
   });
@@ -150,7 +143,7 @@ describe("user store 第三方登录", () => {
     expect(AuthStorage.setTokens).not.toHaveBeenCalled();
   });
 
-  it("socialBind：提交正确参数，成功后写入令牌", async () => {
+  it("socialBind：提交正确参数，成功后写入 SAS 令牌", async () => {
     vi.mocked(AuthAPI.socialBind).mockResolvedValue(WECHAT_TOKEN as never);
 
     const store = useUserStore();
@@ -162,9 +155,9 @@ describe("user store 第三方登录", () => {
       username: "admin",
       password: "Lr@123456.",
     });
+    // socialBind 走 applySsoLogin，同样只写入 access_token
     expect(AuthStorage.setTokens).toHaveBeenCalledWith(
-      WECHAT_TOKEN.accessToken,
-      WECHAT_TOKEN.refreshToken,
+      expect.stringContaining(WECHAT_TOKEN.access_token),
       false
     );
   });

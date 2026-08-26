@@ -1,5 +1,8 @@
 /**
  * 登录请求参数
+ *
+ * @remarks 账号密码登录端点已随 SAS 切换移除，此处保留仅因
+ * `src/views/login/components/Register.vue`（独立于登录页，未在改动清单内）仍引用。
  */
 export interface LoginRequest {
   /** 用户名 */
@@ -17,20 +20,6 @@ export interface LoginRequest {
 }
 
 /**
- * 登录结果
- */
-export interface LoginResult {
-  /** 访问令牌 */
-  accessToken: string;
-  /** 刷新令牌 */
-  refreshToken: string;
-  /** 令牌类型 */
-  tokenType: string;
-  /** 过期时间(单位:秒) */
-  expiresIn: number;
-}
-
-/**
  * 验证码信息
  */
 export interface CaptchaInfo {
@@ -38,20 +27,6 @@ export interface CaptchaInfo {
   captchaId: string;
   /** 验证码图片 Base64 */
   captchaBase64: string;
-}
-
-/**
- * 短信登录请求参数
- */
-export interface SmsLoginRequest {
-  /** 手机号 */
-  phone: string;
-  /** 短信验证码 */
-  smsCode: string;
-  /** 记住我 */
-  rememberMe?: boolean;
-  /** 租户 ID */
-  tenantId?: number;
 }
 
 /**
@@ -75,17 +50,17 @@ export interface SocialAuthorizeResult {
 }
 
 /**
- * 第三方令牌（后端 TokenDto）
+ * 第三方登录返回的 SAS 令牌（对应后端 SsoTokenDto，OAuth2 JSON 下划线契约）
  */
 export interface SocialTokenDto {
-  /** 访问令牌 */
-  accessToken: string;
-  /** 刷新令牌 */
-  refreshToken: string;
-  /** 过期毫秒数 */
-  expireIn?: number;
-  /** 令牌类型 */
-  tokenType?: string;
+  /** 访问令牌（SAS RS256 JWT） */
+  access_token: string;
+  /** 令牌类型（Bearer） */
+  token_type?: string;
+  /** 过期时间（秒） */
+  expires_in?: number;
+  /** 授权范围（空格分隔） */
+  scope?: string;
 }
 
 /**

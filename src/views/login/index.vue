@@ -71,132 +71,27 @@
                 </button>
               </div>
 
-              <el-form
-                v-show="loginType === 'account'"
-                ref="loginFormRef"
-                :model="loginFormData"
-                :rules="loginRules"
-                size="large"
-                :validate-on-rule-change="false"
-              >
-                <el-form-item prop="username">
-                  <el-input
-                    v-model.trim="loginFormData.username"
-                    placeholder="用户名"
-                    :prefix-icon="UserIcon"
-                  />
-                </el-form-item>
-
-                <el-tooltip :visible="isCapsLock" content="大写锁定已开启" placement="right">
-                  <el-form-item prop="password">
-                    <el-input
-                      v-model.trim="loginFormData.password"
-                      placeholder="密码"
-                      type="password"
-                      show-password
-                      :prefix-icon="LockIcon"
-                      @keyup="checkCapsLock"
-                      @keyup.enter="handleLoginSubmit"
-                    />
-                  </el-form-item>
-                </el-tooltip>
-
-                <el-form-item prop="captchaCode">
-                  <div class="captcha-row">
-                    <el-input
-                      v-model.trim="loginFormData.captchaCode"
-                      placeholder="验证码"
-                      class="captcha-row__input"
-                      @keyup.enter="handleLoginSubmit"
-                    >
-                      <template #prefix>
-                        <span class="input-prefix-icon i-svg:security" />
-                      </template>
-                    </el-input>
-                    <div class="captcha-img" @click="getCaptcha">
-                      <el-icon v-if="codeLoading" class="is-loading" :size="16">
-                        <Loading />
-                      </el-icon>
-                      <img v-else-if="captchaBase64" :src="captchaBase64" alt="验证码" />
-                      <el-icon v-else :size="16"><Refresh /></el-icon>
-                    </div>
-                  </div>
-                </el-form-item>
-
-                <div class="login-options">
-                  <el-checkbox v-model="loginFormData.rememberMe">记住我</el-checkbox>
-                  <a class="login-options__link" @click="showForm('resetPwd')">忘记密码？</a>
-                </div>
-
+              <div v-if="loginType === 'sso'" class="login-sso-form">
                 <el-button
                   :loading="loading"
                   type="primary"
                   size="large"
                   class="login-btn"
-                  @click="handleLoginSubmit"
+                  @click="handleSsoLogin"
                 >
-                  登录
+                  <el-icon :size="16"><Key /></el-icon>
+                  SSO 单点登录
                 </el-button>
-              </el-form>
+                <div class="login-options">
+                  <a class="login-options__link" @click="showForm('resetPwd')">忘记密码？</a>
+                </div>
+              </div>
 
-              <el-form
-                v-show="loginType === 'sms'"
-                ref="smsFormRef"
-                :model="smsFormData"
-                :rules="smsRules"
-                size="large"
-                :validate-on-rule-change="false"
-              >
-                <el-form-item prop="phone">
-                  <el-input
-                    v-model.trim="smsFormData.phone"
-                    placeholder="手机号"
-                    :prefix-icon="PhoneIcon"
-                    maxlength="11"
-                  />
-                </el-form-item>
-
-                <el-form-item prop="smsCode">
-                  <div class="sms-code-row">
-                    <el-input
-                      v-model.trim="smsFormData.smsCode"
-                      placeholder="短信验证码"
-                      class="sms-code-row__input"
-                      :prefix-icon="SmsIcon"
-                      maxlength="6"
-                      @keyup.enter="handleSmsLoginSubmit"
-                    />
-                    <el-button
-                      class="sms-code-row__btn"
-                      :loading="smsSending"
-                      :disabled="smsCountdown > 0"
-                      @click="handleSendSmsCode"
-                    >
-                      {{ smsCountdown > 0 ? `${smsCountdown}s 后重发` : "获取验证码" }}
-                    </el-button>
-                  </div>
-                </el-form-item>
-
-                <el-button
-                  :loading="smsLoading"
-                  type="primary"
-                  size="large"
-                  class="login-btn"
-                  @click="handleSmsLoginSubmit"
-                >
-                  登录
-                </el-button>
-              </el-form>
-
-              <div v-if="loginType === 'wechat'" class="login-card__form login-card__form--wechat">
+              <div v-else class="login-card__form login-card__form--wechat">
                 <WeChatLoginPanel />
               </div>
 
-              <div v-show="loginType !== 'wechat'" class="login-alt">
-                <button type="button" class="login-sso" @click="handleSsoLogin">
-                  <el-icon :size="16"><Key /></el-icon>
-                  SSO 单点登录
-                </button>
+              <div class="login-alt">
                 <div class="login-alt__divider">其他登录方式</div>
                 <div class="login-alt__buttons">
                   <el-tooltip
@@ -237,13 +132,9 @@
 <script setup lang="ts">
 defineOptions({ name: "LoginPage", inheritAttrs: false });
 
-import { Clock, Iphone, Key, Lock, Loading, Message, Refresh, User } from "@element-plus/icons-vue";
-import type { FormInstance } from "element-plus";
+import { Clock, Key } from "@element-plus/icons-vue";
 import AuthAPI from "@/api/auth";
-import type { LoginRequest, SmsLoginRequest, SocialLoginType } from "@/api/auth";
-import router from "@/router";
-import { useUserStore } from "@/stores";
-import { AuthStorage } from "@/utils/auth";
+import type { SocialLoginType } from "@/api/auth";
 import { startSsoLogin } from "@/utils/sso";
 import { appConfig } from "@/settings";
 import { STORAGE_KEYS } from "@/constants";
@@ -252,164 +143,24 @@ import WeChatLoginPanel from "@/views/login/components/WeChatLogin.vue";
 import ResetPwd from "./components/ResetPwd.vue";
 import logo from "@/assets/images/logo.png";
 
-const userStore = useUserStore();
 const route = useRoute();
 const component = ref<"login" | "resetPwd">("login");
-
-const loginFormRef = ref<FormInstance>();
 const loading = ref(false);
-const isCapsLock = ref(false);
-const captchaBase64 = ref<string>();
-const codeLoading = ref(false);
 
-const UserIcon = markRaw(User);
-const LockIcon = markRaw(Lock);
-const PhoneIcon = markRaw(Iphone);
-const SmsIcon = markRaw(Message);
+/* ---------------------------- 登录方式 ---------------------------- */
 
-/** 登录方式：account-账号密码 / sms-短信验证码 / wechat-微信扫码 */
-type LoginType = "account" | "sms" | "wechat";
+/** 登录方式：sso-单点登录 / wechat-微信扫码 */
+type LoginType = "sso" | "wechat";
 
-const loginType = ref<LoginType>("account");
+const loginType = ref<LoginType>("sso");
 
 const loginTabs: { key: LoginType; label: string }[] = [
-  { key: "account", label: "账号登录" },
-  { key: "sms", label: "短信登录" },
-  { key: "wechat", label: "微信登录" },
+  { key: "sso", label: "SSO 登录" },
+  { key: "wechat", label: "微信扫码登录" },
 ];
-
-const loginFormData = ref<LoginRequest>({
-  username: "admin",
-  password: "Lr@123456.",
-  captchaId: "",
-  captchaCode: "",
-  rememberMe: AuthStorage.getRememberMe(),
-});
-
-const loginRules = computed(() => ({
-  username: [{ required: true, trigger: "blur", message: "请输入用户名" }],
-  password: [
-    { required: true, trigger: "blur", message: "请输入密码" },
-    { min: 6, message: "密码不能少于6位", trigger: "blur" },
-  ],
-  captchaCode: [{ required: true, trigger: "blur", message: "请输入验证码" }],
-}));
-
-function getCaptcha() {
-  codeLoading.value = true;
-  AuthAPI.getCaptcha()
-    .then((d) => {
-      loginFormData.value.captchaId = d.captchaId;
-      captchaBase64.value = d.captchaBase64;
-    })
-    .finally(() => (codeLoading.value = false));
-}
-
-async function handleLoginSubmit() {
-  const valid = await loginFormRef.value?.validate().then(
-    () => true,
-    () => false
-  );
-  if (!valid) return;
-
-  loading.value = true;
-  try {
-    await userStore.login(loginFormData.value).then(
-      async () => {
-        const redirectPath = (route.query.redirect as string) || "/";
-        await router.push(decodeURIComponent(redirectPath));
-      },
-      () => getCaptcha()
-    );
-  } finally {
-    loading.value = false;
-  }
-}
-
-function checkCapsLock(event: KeyboardEvent) {
-  if (event instanceof KeyboardEvent) {
-    isCapsLock.value = event.getModifierState("CapsLock");
-  }
-}
 
 function showForm(type: "resetPwd") {
   component.value = type;
-}
-
-/* ---------------------------- 短信验证码登录 ---------------------------- */
-
-const smsFormRef = ref<FormInstance>();
-const smsSending = ref(false);
-const smsLoading = ref(false);
-const smsCountdown = ref(0);
-let smsTimer: ReturnType<typeof setInterval> | null = null;
-
-const smsFormData = ref<SmsLoginRequest>({
-  phone: "",
-  smsCode: "",
-});
-
-const smsRules = computed(() => ({
-  phone: [
-    { required: true, trigger: "blur", message: "请输入手机号" },
-    { pattern: /^1[3-9]\d{9}$/, message: "手机号格式不正确", trigger: "blur" },
-  ],
-  smsCode: [
-    { required: true, trigger: "blur", message: "请输入短信验证码" },
-    { pattern: /^\d{4,8}$/, message: "验证码为 4-8 位数字", trigger: "blur" },
-  ],
-}));
-
-function startSmsCountdown(seconds = 60) {
-  stopSmsCountdown();
-  smsCountdown.value = seconds;
-  smsTimer = setInterval(() => {
-    smsCountdown.value -= 1;
-    if (smsCountdown.value <= 0) stopSmsCountdown();
-  }, 1000);
-}
-
-function stopSmsCountdown() {
-  if (smsTimer) {
-    clearInterval(smsTimer);
-    smsTimer = null;
-  }
-  smsCountdown.value = 0;
-}
-
-async function handleSendSmsCode() {
-  const valid = await smsFormRef.value?.validateField("phone").then(
-    () => true,
-    () => false
-  );
-  if (!valid) return;
-
-  smsSending.value = true;
-  try {
-    await AuthAPI.sendSmsCode(smsFormData.value.phone);
-    ElMessage.success("验证码已发送，请注意查收");
-    startSmsCountdown();
-  } finally {
-    smsSending.value = false;
-  }
-}
-
-async function handleSmsLoginSubmit() {
-  const valid = await smsFormRef.value?.validate().then(
-    () => true,
-    () => false
-  );
-  if (!valid) return;
-
-  smsLoading.value = true;
-  try {
-    await userStore.loginBySms(smsFormData.value).then(async () => {
-      const redirectPath = (route.query.redirect as string) || "/";
-      await router.push(decodeURIComponent(redirectPath));
-    });
-  } finally {
-    smsLoading.value = false;
-  }
 }
 
 /* ---------------------------- 第三方登录 ---------------------------- */
@@ -461,20 +212,16 @@ async function handleSsoLogin() {
   } catch {
     redirectPath = "/";
   }
+  loading.value = true;
   try {
     await startSsoLogin(redirectPath);
   } catch (e) {
+    loading.value = false;
     // 不静默吞错（例如非安全上下文下的异常）：给出可见提示，便于定位
     console.error("[SSO] 发起单点登录失败:", e);
     ElMessage.error("发起单点登录失败：" + (e instanceof Error ? e.message : String(e)));
   }
 }
-
-onMounted(() => {
-  getCaptcha();
-});
-
-onBeforeUnmount(() => stopSmsCountdown());
 </script>
 
 <style lang="scss" scoped>
@@ -786,12 +533,13 @@ $input-h: 44px;
 .login-options {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 22px;
+  justify-content: center;
+  margin-bottom: 0;
   font-size: 14px;
   color: $text-secondary;
 
   &__link {
+    margin-top: 14px;
     font-weight: 500;
     color: $primary;
     cursor: pointer;
@@ -819,6 +567,10 @@ $input-h: 44px;
   &:focus-visible {
     outline: none;
   }
+}
+
+.login-sso-form {
+  width: 100%;
 }
 
 .login-tabs {
