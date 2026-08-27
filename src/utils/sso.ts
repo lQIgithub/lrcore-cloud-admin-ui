@@ -14,6 +14,39 @@
 import { STORAGE_KEYS } from "@/constants";
 import { Storage } from "./storage";
 
+/**
+ * 记录本次 JS 会话是否已发起过 SSO 授权流程（发起后会紧随整页跳转授权服务器）。
+ *
+ * 背景（state 不匹配缺陷修复）：公共客户端授权码流程把随机 state 暂存于
+ * sessionStorage（单槽），回调页按 URL 中的 state 与该槽比对并一次性消费。
+ * 若并发出现另一处触发（401 拦截器的 redirectToLogin / 静默再授权 / 守卫自动登录 /
+ * 登录页按钮）在页面真正卸载前再次 setPending 或 clearAll，会把槽内 state 覆写或清空，
+ * 回调回来即“state 不匹配”。故对同一 JS 会话内的发起做单飞互斥：
+ * 一旦有流程在途，后续触发一律让位（不覆写、不清空），由在途流程的整页跳转承接。
+ */
+let ssoFlowStarted = false;
+
+/** 是否存在一笔已发起、尚未消费的 SSO 授权流程（回调页为全新文档，此处恒为 false）。 */
+export function isSsoFlowStarted(): boolean {
+  return ssoFlowStarted;
+}
+
+/**
+ * 尝试标记一笔 SSO 授权流程已开始。
+ * 返回 true 表示本次调用取得“发言权”，应立即暂存 state 并跳转 AS；
+ * 返回 false 表示已有一笔在途流程，调用方应直接放弃（等待在途跳转卸载本页）。
+ */
+export function tryBeginSsoFlow(): boolean {
+  if (ssoFlowStarted) return false;
+  ssoFlowStarted = true;
+  return true;
+}
+
+/** 一笔 SSO 流程异常中止（如非安全上下文导致 PKCE 计算失败回退登录页）时复位，允许重试。 */
+export function abortSsoFlow(): void {
+  ssoFlowStarted = false;
+}
+
 /** 授权服务器 issuer（dev 直连 lrcore-auth :10802；可用 VITE_SSO_ISSUER 覆盖） */
 export const SSO_ISSUER: string = import.meta.env.VITE_SSO_ISSUER || "http://localhost:10802";
 
@@ -197,14 +230,27 @@ export function buildAuthorizeUrl(options: {
 /**
  * 发起 SSO 登录：生成 PKCE/state 暂存后整页跳转授权端点。
  *
+ * 单飞互斥：若本 JS 会话已有一笔在途 SSO 流程（见 {@link tryBeginSsoFlow}），直接返回
+ * false，不覆写暂存 state，避免回调时“state 不匹配”。
+ *
  * @param redirectPath 登录成功（回调换码完成）后要进入的系统内路由（默认首页）
+ * @returns 是否已取得流程并整页跳转 AS（false = 已有在途流程，调用方应放弃）
  */
-export async function startSsoLogin(redirectPath = "/"): Promise<void> {
-  const verifier = generateCodeVerifier();
-  const challenge = await sha256Challenge(verifier);
-  const state = generateState();
-  SsoStorage.setPending(state, verifier, redirectPath);
+export async function startSsoLogin(redirectPath = "/"): Promise<boolean> {
+  if (!tryBeginSsoFlow()) return false;
+  let verifier: string, challenge: string, state: string;
+  try {
+    verifier = generateCodeVerifier();
+    challenge = await sha256Challenge(verifier);
+    state = generateState();
+    SsoStorage.setPending(state, verifier, redirectPath);
+  } catch (error) {
+    // 非安全上下文等场景 PKCE/随机数计算失败：复位允许重试，并向上抛出由调用方提示
+    abortSsoFlow();
+    throw error;
+  }
   window.location.href = buildAuthorizeUrl({ state, challenge });
+  return true;
 }
 
 let silentReauthInFlight = false;
@@ -214,19 +260,31 @@ let silentReauthInFlight = false;
  *
  * - AS 会话存活：直接回调出码，用户无感；
  * - AS 会话已失效：AS 回到登录页（携带原授权请求），用户重新登录后续接。
- * 本函数触发整页跳转，<b>不返回</b>（跳转前调用方不应再有 UI 操作）。
+ * 本函数触发整页跳转，返回 true（跳转前调用方不应再有 UI 操作）；
+ * 单飞互斥，已有在途流程时返回 false 不覆写 state。
  *
  * @param currentPath 当前系统内路由（换码成功后恢复到此页）
  */
-export async function startSsoSilentReauth(currentPath: string): Promise<void> {
-  if (silentReauthInFlight) return;
+export async function startSsoSilentReauth(currentPath: string): Promise<boolean> {
+  if (silentReauthInFlight) return false;
+  // 单飞互斥：已有其它流程（守卫自动登录/用户按钮发起）在途时，静默再授权让位，
+  // 不覆写暂存 state/data，避免回调“state 不匹配”。
+  if (!tryBeginSsoFlow()) return false;
   silentReauthInFlight = true;
 
-  const verifier = generateCodeVerifier();
-  const challenge = await sha256Challenge(verifier);
-  const state = generateState();
-  SsoStorage.setPending(state, verifier, currentPath);
+  let verifier: string, challenge: string, state: string;
+  try {
+    verifier = generateCodeVerifier();
+    challenge = await sha256Challenge(verifier);
+    state = generateState();
+    SsoStorage.setPending(state, verifier, currentPath);
+  } catch (error) {
+    silentReauthInFlight = false;
+    abortSsoFlow();
+    throw error;
+  }
   window.location.href = buildAuthorizeUrl({ prompt: "none", state, challenge });
+  return true;
 }
 
 /** 记录本次授权流程的 state / verifier / 目标路由（sessionStorage，回调页消费后清除） */

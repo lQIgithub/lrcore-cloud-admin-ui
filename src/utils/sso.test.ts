@@ -16,13 +16,17 @@ import {
   SSO_ISSUER,
   SSO_REDIRECT_URI,
   SsoStorage,
+  abortSsoFlow,
   base64UrlEncode,
   buildAuthorizeUrl,
   buildSsoLogoutUrl,
   generateCodeVerifier,
   generateState,
   isSasToken,
+  isSsoFlowStarted,
   sha256Challenge,
+  startSsoLogin,
+  tryBeginSsoFlow,
 } from "@/utils/sso";
 
 // jsdom 的 crypto 可能不含 subtle，借用 Node WebCrypto 保证 S256 可计算
@@ -183,6 +187,43 @@ describe("SsoStorage（state / verifier / id_token）", () => {
     SsoStorage.clearAll();
     expect(Storage.get(STORAGE_KEYS.SSO_ID_TOKEN, "")).toBe("");
     expect(Storage.sessionGet(STORAGE_KEYS.SSO_ID_TOKEN, "")).toBe("");
+  });
+});
+
+describe("SSO 流程单飞互斥（state 不匹配缺陷修复）", () => {
+  beforeEach(() => {
+    // 每例复位移标志，避免互相污染
+    abortSsoFlow();
+  });
+
+  it("第一次尝试取得发言权，重复尝试让位（不覆写 state）", () => {
+    expect(isSsoFlowStarted()).toBe(false);
+    expect(tryBeginSsoFlow()).toBe(true);
+    expect(isSsoFlowStarted()).toBe(true);
+    // 已有一笔在途：后续触发不再取得发言权
+    expect(tryBeginSsoFlow()).toBe(false);
+    // abort 复位后可再次发起
+    abortSsoFlow();
+    expect(isSsoFlowStarted()).toBe(false);
+    expect(tryBeginSsoFlow()).toBe(true);
+  });
+
+  it("abort 复位后 isSsoFlowStarted 恢复 false", () => {
+    expect(tryBeginSsoFlow()).toBe(true);
+    abortSsoFlow();
+    expect(isSsoFlowStarted()).toBe(false);
+  });
+
+  it("startSsoLogin 在已有在途流程时不发起并返回 false（state 不被覆写）", async () => {
+    // 伪造一笔在途流程
+    SsoStorage.setPending("in-flight-state", "in-flight-verifier", "/x");
+    expect(tryBeginSsoFlow()).toBe(true);
+
+    // 模拟 401 拦截器在在途期间再触发一次
+    expect(await startSsoLogin("/dashboard")).toBe(false);
+
+    // 关键：原在途 state 必须保留，回调页才比对得上
+    expect(SsoStorage.verifyState("in-flight-state")).toBe(true);
   });
 });
 

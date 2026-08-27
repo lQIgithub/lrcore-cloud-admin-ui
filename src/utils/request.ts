@@ -6,6 +6,7 @@ import { ApiCodeEnum } from "@/enums/api";
 import { useUserStoreHook } from "@/stores/user";
 import { usePermissionStoreHook } from "@/stores/permission";
 import { AuthStorage, redirectToLogin } from "@/utils/auth";
+import { isSsoFlowStarted } from "@/utils/sso";
 import { decryptResponseData, encryptRequestData } from "@/utils";
 import type { ApiResult } from "@/api/common";
 
@@ -64,6 +65,13 @@ http.interceptors.response.use(
           await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
           return Promise.reject(new Error("Token Invalid (sso reauth)"));
         }
+        // 无本地令牌：若已有一笔 SSO 授权流程在途（守卫自动登录/登录页按钮发起，
+        // 页面即将整页跳转授权服务器），不要再 redirectToLogin —— 它内部会
+        // resetAllState → SsoStorage.clearAll()，把暂存的 state 清空，
+        // 授权服务器回跳回调页时即“state 不匹配”。此时仅拒绝本次请求，让在途跳转承接。
+        if (isSsoFlowStarted()) {
+          return Promise.reject(new Error("Token Invalid (sso flow in progress)"));
+        }
         await redirectToLogin("登录状态已过期，请重新登录");
         return Promise.reject(new Error("Token Invalid"));
       }
@@ -96,6 +104,11 @@ http.interceptors.response.use(
       if (userStore.isSas()) {
         await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
         return Promise.reject(new Error("Token Invalid (sso reauth)"));
+      }
+
+      // 同 success-form 401 分支：SSO 流程在途时不 redirectToLogin（避免清空暂存 state）
+      if (isSsoFlowStarted()) {
+        return Promise.reject(new Error("Token Invalid (sso flow in progress)"));
       }
 
       await redirectToLogin("登录已过期，请重新登录");

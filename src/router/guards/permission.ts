@@ -4,6 +4,8 @@ import router from "@/router";
 import { usePermissionStore, useUserStore } from "@/stores";
 import { useTenantStoreHook } from "@/stores/tenant";
 import { isTenantEnabled } from "@/utils/tenant";
+import { startSsoLogin } from "@/utils/sso";
+import { appConfig } from "@/settings";
 
 /**
  * 路由权限守卫
@@ -21,10 +23,25 @@ export function setupPermissionGuard() {
 
       // 未登录处理
       if (!isLoggedIn) {
+        // 白名单路由直接放行（登录页 / 回调页不参与鉴权）
         if (whiteList.includes(to.path)) {
           return;
         }
         NProgress.done();
+        // SSO 自动登录：未登录访问受保护路由时，不再停在登录页，
+        // 直接发起 SSO 授权码流程（AS 有会话 → 免登直达；无会话 → AS 登录后回跳）。
+        if (appConfig.autoSsoLogin) {
+          try {
+            // startSsoLogin 内部单飞互斥：成功发起则整页跳转 AS（返回 true），
+            // 已有其它在途 SSO 流程（如 401 静默再授权）则不发起、交由该流程承接（返回 false）。
+            await startSsoLogin(to.fullPath);
+          } catch (error) {
+            // 非安全上下文等场景下无法计算 PKCE，回退登录页并给出可见提示
+            console.error("[guard] 自动 SSO 登录失败:", error);
+            return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
+          }
+          return false;
+        }
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`;
       }
 

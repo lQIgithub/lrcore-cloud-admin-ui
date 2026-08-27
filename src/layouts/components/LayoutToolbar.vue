@@ -24,6 +24,12 @@
       <div v-if="showTenantSwitcher" class="layout-toolbar__item">
         <TenantSwitcher @change="handleTenantChange" />
       </div>
+
+      <el-tooltip v-if="canReturnPortal" content="返回子门户" placement="bottom" :show-after="200">
+        <div class="layout-toolbar__item" @click="handlePortalClick">
+          <el-icon :size="16"><Grid /></el-icon>
+        </div>
+      </el-tooltip>
     </template>
 
     <div class="layout-toolbar__item layout-toolbar__item--profile">
@@ -56,7 +62,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { defaults } from "@/settings";
+import { appConfig, defaults } from "@/settings";
 import { DeviceEnum, SidebarColor, ThemeMode, LayoutMode } from "@/enums/settings";
 import { useAppStore, useSettingsStore, useUserStore } from "@/stores";
 
@@ -87,6 +93,18 @@ const showTenantSwitcher = computed(() => {
   }
   return tenantStore.tenantList.length > 1;
 });
+
+/** 是否展示「返回子门户」入口（子门户地址已配置时才展示） */
+const canReturnPortal = computed(() => !!appConfig.portalUrl?.trim());
+
+/**
+ * 返回子门户（子系统选择门户页，AS 侧 /sso/portal.html）。
+ * 门户即子系统入口集合页，采用新标签打开，与子系统卡片行为一致。
+ */
+function handlePortalClick() {
+  if (!appConfig.portalUrl) return;
+  window.open(appConfig.portalUrl, "_blank", "noopener");
+}
 
 function handleTenantChange(tenantId: number) {
   tenantStore.switchTenant(tenantId).then(

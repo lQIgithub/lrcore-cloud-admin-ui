@@ -10,6 +10,9 @@ interface ImportMetaEnv {
   readonly VITE_APP_API_URL: string;
   readonly VITE_APP_TITLE?: string;
   readonly VITE_APP_TENANT_ENABLED?: string;
+  readonly VITE_APP_PORTAL_URL?: string;
+  readonly VITE_APP_SSO_AUTO?: string;
+  readonly VITE_SSO_ISSUER?: string;
   readonly VITE_MOCK_DEV_SERVER: boolean;
 }
 

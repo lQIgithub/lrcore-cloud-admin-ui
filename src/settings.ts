@@ -76,6 +76,15 @@ export const appConfig = {
 
   // 功能开关
   tenantEnabled: env.VITE_APP_TENANT_ENABLED === "true",
+
+  // 子门户地址：SSO 登录成功后的「子系统选择门户」页（lrcore-auth AS 侧 /sso/portal.html）。
+  // 顶栏「返回子门户」入口依赖此配置；留空则不展示该入口
+  portalUrl: (env.VITE_APP_PORTAL_URL as string) || "",
+
+  // SSO 自动登录：true 时未登录访问受保护路由将自动走 SSO 授权码流程（免登直达，
+  // 不再停在登录页），配合子门户“点击子系统→直接进入后台”的体验。
+  // AS 无会话时会先落到 AS 登录页，登录后回跳本系统。
+  autoSsoLogin: env.VITE_APP_SSO_AUTO === "true",
 } as const;
 
 export const defaults = {
