@@ -472,7 +472,7 @@ function buildDefaultsCode(): string {
     showWatermark: settingsStore.showWatermark,
     pageSwitchingAnimation: `"${settingsStore.pageSwitchingAnimation}"`,
     showSettings: true,
-    watermarkContent: "pkg.name",
+    watermarkContent: "appConfig.name",
   };
 
   return `export const defaults = {

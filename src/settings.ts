@@ -70,9 +70,10 @@ export const themePalettePresets = [
 export const defaultThemePalette = themePalettePresets[0];
 
 export const appConfig = {
-  name: pkg.name as string,
+  // 平台展示名：优先取环境变量 VITE_APP_NAME，未配置时回退到 package.json 名称
+  name: (env.VITE_APP_NAME as string) || (pkg.name as string),
   version: pkg.version as string,
-  title: (env.VITE_APP_TITLE as string) || pkg.name,
+  title: (env.VITE_APP_TITLE as string) || (env.VITE_APP_NAME as string) || (pkg.name as string),
 
   // 功能开关
   tenantEnabled: env.VITE_APP_TENANT_ENABLED === "true",
@@ -101,5 +102,5 @@ export const defaults = {
   showWatermark: false,
   pageSwitchingAnimation: "fade-slide",
   showSettings: true,
-  watermarkContent: pkg.name,
+  watermarkContent: appConfig.name,
 } as const;
