@@ -371,6 +371,9 @@ onMounted(() => {
     },
     edgeTextDraggable: true,
     nodeTextDraggable: true,
+    // 用户手动拖拽绘制的连线使用工具栏当前选中的样式。
+    // LogicFlow 内置默认是 polyline（折线），不设置的话即使选中“曲线”拉出的仍是折线
+    edgeType: store.edgeType,
   });
 
   // 缩放范围与 store.zoomLevel 的 [0.1, 3] 保持一致

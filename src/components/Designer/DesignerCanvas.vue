@@ -188,16 +188,19 @@ async function handleEdgeTypeChange(val: string | number | boolean | undefined) 
   }));
   store.updateAllEdges(newEdges);
 
-  // 3. 重新渲染画布（使用新类型的边）
+  // 3. 更新 LogicFlow 图模型的默认连线类型（用户手动拖拽绘制新连线时使用），
+  //    否则后续拉出的新连线仍是 LogicFlow 内置默认的折线
+  // 4. 重新渲染画布（使用新类型的边）
   const lf = canvasRef.value?.getInstance?.();
   if (lf) {
+    lf.setDefaultEdgeType(type);
     lf.render({
       nodes: store.graphData.nodes,
       edges: newEdges,
     });
   }
 
-  // 4. 自动优化排版
+  // 5. 自动优化排版
   await nextTick();
   await optimizeLayout();
 }
