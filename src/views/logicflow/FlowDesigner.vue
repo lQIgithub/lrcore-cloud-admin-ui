@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Connection,
@@ -120,12 +121,14 @@ import {
 } from "@element-plus/icons-vue";
 import { useFlowDesignerStore } from "@/stores/flow-designer";
 import { processDefinitionApi } from "@/api/logicflow";
+import { bpmnToGraph } from "@/utils/bpmnConverter";
 import NodePalette from "@/components/Designer/NodePalette.vue";
 import DesignerCanvas from "@/components/Designer/DesignerCanvas.vue";
 import PropertyPanel from "@/components/Designer/PropertyPanel.vue";
 
 const store = useFlowDesignerStore();
 const designerCanvasRef = ref<InstanceType<typeof DesignerCanvas> | null>(null);
+const route = useRoute();
 
 const processName = ref("新流程");
 const processKey = ref("new_process");
@@ -136,9 +139,36 @@ const canUndo = computed(() => store.historyIndex > 0);
 const canRedo = computed(() => store.historyIndex < store.history.length - 1);
 const hasSelection = computed(() => store.selectedElement !== null);
 
-onMounted(() => {
-  // 初始化默认流程
+onMounted(async () => {
+  // 编辑模式（流程管理列表「编辑」/ 版本「查看」跳转携带 ?id=）：
+  // 加载原流程定义，后端返回部署的 BPMN XML，前端反向转换为 LogicFlow 图数据还原画布
+  const id = typeof route.query.id === "string" ? route.query.id : "";
+  if (id) {
+    try {
+      const definition = await store.loadProcessDefinition(id);
+      if (definition) {
+        if (definition.name) processName.value = definition.name;
+        if (definition.key) processKey.value = definition.key;
+        // 后端返回的是部署产物，不携带 LogicFlow 图数据：
+        // 无节点时用 bpmnXml 反向转换还原画布（store 的 graphData 变更会增量同步到画布）
+        if (!store.graphData.nodes.length && definition.bpmnXml) {
+          store.graphData = bpmnToGraph(definition.bpmnXml);
+          store.pushHistory();
+        }
+        if (!store.graphData.nodes.length) {
+          ElMessage.warning("该流程没有可还原的流程图数据，画布为空");
+        }
+      }
+    } catch {
+      // 请求失败（未登录/服务异常等）已由 request 拦截器统一提示
+    }
+    return;
+  }
+
+  // 新建模式：初始化空画布，并清空残留的流程定义状态，
+  // 避免上次编辑的 id 残留导致「保存」误入更新分支
   store.clearCanvas();
+  store.processDefinition = null;
   processName.value = "新流程";
   processKey.value = "new_process";
   store.setDraftProcessInfo(processKey.value, processName.value);
@@ -192,28 +222,24 @@ async function handleNew() {
 
 async function handleSave() {
   try {
-    // 先创建/更新流程定义
+    // 先创建/更新流程定义（request 拦截器已拆壳，解析值即后端返回的 data 载荷）
     if (!store.processDefinition?.id) {
-      const res = await processDefinitionApi.create({
+      const created = await processDefinitionApi.create({
         key: processKey.value,
         name: processName.value,
         graphData: store.graphData,
       });
-      if (res.success && res.data) {
-        store.processDefinition = res.data;
+      if (created) {
+        store.processDefinition = created;
         ElMessage.success("流程保存成功");
       }
     } else {
       // await store.saveProcess();
-      const res = await processDefinitionApi.update({
+      await processDefinitionApi.update({
         key: processKey.value,
         name: processName.value,
         graphData: store.graphData,
       });
-      if (res.success && res.data) {
-        store.processDefinition = res.data;
-        ElMessage.success("流程更新成功");
-      }
       ElMessage.success("流程更新成功");
     }
   } catch (e) {
@@ -303,9 +329,9 @@ async function handleValidate() {
   // 这里做双重校验，一次是前端校验，一次是后端校验
   const validation = store.validateGraph();
   if (validation.valid) {
-    // 前端校验通过，再校验后端
-    const validateRes = await processDefinitionApi.validate(store.graphData);
-    if (validateRes.success && validateRes.data) {
+    // 前端校验通过，再校验后端（拦截器已拆壳，解析值即校验结果布尔值）
+    const isValid = await processDefinitionApi.validate(store.graphData);
+    if (isValid) {
       ElMessageBox.alert("流程验证通过！", "验证结果", { type: "success" });
     } else {
       ElMessageBox.alert("流程验证失败！", "验证结果", { type: "error" });

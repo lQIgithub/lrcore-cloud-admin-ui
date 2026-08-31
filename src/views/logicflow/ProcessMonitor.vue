@@ -258,9 +258,10 @@ onMounted(() => {
 
 async function fetchStatistics() {
   try {
-    const res = await monitorApi.getActiveInstances();
-    if (res.code === 200 && res.data) {
-      Object.assign(statistics, res.data);
+    // request 拦截器已拆壳，解析值即统计数据对象（后端未实现时可能为 null）
+    const data = await monitorApi.getActiveInstances();
+    if (data) {
+      Object.assign(statistics, data);
     }
   } catch (e) {
     console.error("获取统计数据失败", e);
@@ -269,10 +270,8 @@ async function fetchStatistics() {
 
 async function fetchProcessOptions() {
   try {
-    const res = await processDefinitionApi.list();
-    if (Number(res.code) === 200 && res.data) {
-      processOptions.value = res.data;
-    }
+    const list = await processDefinitionApi.list();
+    processOptions.value = Array.isArray(list) ? list : [];
   } catch (e) {
     console.error("获取流程列表失败", e);
   }
@@ -281,14 +280,12 @@ async function fetchProcessOptions() {
 async function fetchInstances() {
   instancesLoading.value = true;
   try {
-    const res = await processInstanceApi.list({
+    const list = await processInstanceApi.list({
       processDefinitionKey: filterForm.processKey || undefined,
       status: filterForm.status || undefined,
     });
-    if (res.code === 200 && res.data) {
-      instanceList.value = res.data;
-      total.value = res.data.length;
-    }
+    instanceList.value = Array.isArray(list) ? list : [];
+    total.value = instanceList.value.length;
   } catch {
     ElMessage.error("获取实例列表失败");
   } finally {
@@ -300,13 +297,14 @@ async function handleDetail(row: ProcessInstanceVO) {
   currentInstance.value = row;
   showDetailDialog.value = true;
   try {
-    const res = await processInstanceApi.getVariables(row.id);
-    if (res.code === 200 && res.data) {
-      variableList.value = Object.entries(res.data).map(([name, value]) => ({
-        name,
-        value: String(value),
-      }));
-    }
+    // 拦截器已拆壳，解析值即变量键值对（后端未实现时可能为 null）
+    const vars = await processInstanceApi.getVariables(row.id);
+    variableList.value = vars
+      ? Object.entries(vars).map(([name, value]) => ({
+          name,
+          value: String(value),
+        }))
+      : [];
   } catch (e) {
     console.error("获取变量失败", e);
   }

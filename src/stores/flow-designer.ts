@@ -364,16 +364,21 @@ export const useFlowDesignerStore = defineStore("flowDesigner", () => {
 
   /**
    * 加载流程定义
+   *
+   * @returns 加载成功的流程定义；失败（接口报错/数据为空）时返回 null
    */
-  async function loadProcessDefinition(id: string): Promise<void> {
-    const res = await processDefinitionApi.getById(id);
-    if (res.success && res.data) {
-      processDefinition.value = res.data;
-      if (res.data.graphData) {
-        graphData.value = res.data.graphData;
+  async function loadProcessDefinition(id: string): Promise<ProcessDefinitionVO | null> {
+    // request 拦截器已拆壳，解析值即流程定义对象（后端未实现时可能为 null）
+    const definition = await processDefinitionApi.getById(id);
+    if (definition) {
+      processDefinition.value = definition;
+      if (definition.graphData) {
+        graphData.value = definition.graphData;
       }
       pushHistory();
+      return definition;
     }
+    return null;
   }
 
   /**

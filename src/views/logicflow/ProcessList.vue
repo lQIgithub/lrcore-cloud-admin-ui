@@ -147,14 +147,13 @@ onMounted(() => {
 async function fetchList() {
   loading.value = true;
   try {
-    const res = await processDefinitionApi.list({
+    // request 拦截器已拆掉 ApiResult 壳，解析值就是 data（流程定义数组）本身
+    const list = await processDefinitionApi.list({
       keyword: searchForm.keyword || undefined,
       status: searchForm.status || undefined,
     });
-    if (res.success && res.data) {
-      processList.value = res.data;
-      total.value = res.data.length;
-    }
+    processList.value = Array.isArray(list) ? list : [];
+    total.value = processList.value.length;
   } catch {
     ElMessage.error("获取流程列表失败");
   } finally {
@@ -221,10 +220,9 @@ async function handleVersions(row: ProcessDefinitionVO) {
   versionLoading.value = true;
   showVersionsDialog.value = true;
   try {
-    const res = await processDefinitionApi.versions(row.key);
-    if (res.success && res.data) {
-      versionList.value = res.data;
-    }
+    // 拦截器已拆壳，解析值即版本数组（后端未实现时可能为 null，需防御）
+    const versions = await processDefinitionApi.versions(row.key);
+    versionList.value = Array.isArray(versions) ? versions : [];
   } catch {
     ElMessage.error("获取版本历史失败");
   } finally {
