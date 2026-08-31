@@ -29,6 +29,21 @@
         >
           <template #prepend>流程Key</template>
         </el-input>
+        <el-input
+          v-model="processDescription"
+          placeholder="请输入流程描述"
+          class="process-key-input"
+        >
+          <template #prepend>流程描述</template>
+        </el-input>
+        <el-input
+          v-model="processCategory"
+          placeholder="请输入流程分类（如：人事类审批）"
+          class="process-key-input"
+          :maxlength="255"
+        >
+          <template #prepend>流程分类</template>
+        </el-input>
       </div>
       <div class="header-right">
         <el-button @click="handleNew">
@@ -132,6 +147,8 @@ const route = useRoute();
 
 const processName = ref("新流程");
 const processKey = ref("new_process");
+const processDescription = ref("");
+const processCategory = ref("");
 
 const zoomLevel = computed(() => store.zoomLevel);
 // 撤销/重做按钮状态：使用 computed 直接访问响应式源，确保响应式追踪
@@ -149,11 +166,18 @@ onMounted(async () => {
       if (definition) {
         if (definition.name) processName.value = definition.name;
         if (definition.key) processKey.value = definition.key;
-        // 后端返回的是部署产物，不携带 LogicFlow 图数据：
-        // 无节点时用 bpmnXml 反向转换还原画布（store 的 graphData 变更会增量同步到画布）
-        if (!store.graphData.nodes.length && definition.bpmnXml) {
-          store.graphData = bpmnToGraph(definition.bpmnXml);
-          store.pushHistory();
+        if (definition.description) processDescription.value = definition.description;
+        if (definition.category) processCategory.value = definition.category;
+        // 画布还原：优先主表保存的 LogicFlow 原始数据（无损）；
+        // 缺失时退回用部署的 BPMN XML 反向转换
+        if (!store.graphData.nodes.length) {
+          if (definition.graphData?.nodes?.length) {
+            store.graphData = definition.graphData;
+            store.pushHistory();
+          } else if (definition.bpmnXml) {
+            store.graphData = bpmnToGraph(definition.bpmnXml);
+            store.pushHistory();
+          }
         }
         if (!store.graphData.nodes.length) {
           ElMessage.warning("该流程没有可还原的流程图数据，画布为空");
@@ -171,6 +195,8 @@ onMounted(async () => {
   store.processDefinition = null;
   processName.value = "新流程";
   processKey.value = "new_process";
+  processDescription.value = "";
+  processCategory.value = "";
   store.setDraftProcessInfo(processKey.value, processName.value);
 });
 
@@ -215,6 +241,8 @@ async function handleNew() {
     store.processDefinition = null;
     processName.value = "新流程";
     processKey.value = "new_process";
+    processDescription.value = "";
+    processCategory.value = "";
   } catch {
     // 用户取消
   }
@@ -227,6 +255,8 @@ async function handleSave() {
       const created = await processDefinitionApi.create({
         key: processKey.value,
         name: processName.value,
+        description: processDescription.value,
+        category: processCategory.value,
         graphData: store.graphData,
       });
       if (created) {
@@ -238,6 +268,8 @@ async function handleSave() {
       await processDefinitionApi.update({
         key: processKey.value,
         name: processName.value,
+        description: processDescription.value,
+        category: processCategory.value,
         graphData: store.graphData,
       });
       ElMessage.success("流程更新成功");
