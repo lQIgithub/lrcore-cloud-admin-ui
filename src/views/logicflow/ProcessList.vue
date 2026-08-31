@@ -257,7 +257,9 @@ function getStatusText(status?: string): string {
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "-";
-  const date = new Date(dateStr);
+  // 后端返回 "yyyy-MM-dd HH:mm:ss"，Safari 无法解析空格分隔格式，统一转 ISO
+  const date = new Date(dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return dateStr;
   return date.toLocaleString("zh-CN");
 }
 </script>
