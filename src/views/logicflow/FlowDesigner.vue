@@ -36,14 +36,22 @@
         >
           <template #prepend>流程描述</template>
         </el-input>
-        <el-input
-          v-model="processCategory"
-          placeholder="请输入流程分类（如：人事类审批）"
-          class="process-key-input"
-          :maxlength="255"
+        <el-select
+          v-model="categoryModel"
+          filterable
+          allow-create
+          default-first-option
+          clearable
+          placeholder="请选择流程分类（可自定义输入）"
+          class="process-category-select"
         >
-          <template #prepend>流程分类</template>
-        </el-input>
+          <el-option
+            v-for="item in PROCESS_CATEGORY_OPTIONS"
+            :key="item"
+            :label="item"
+            :value="item"
+          />
+        </el-select>
       </div>
       <div class="header-right">
         <el-button @click="handleNew">
@@ -149,6 +157,29 @@ const processName = ref("新流程");
 const processKey = ref("new_process");
 const processDescription = ref("");
 const processCategory = ref("");
+
+/** 流程分类固定选项（与后端 @Schema 描述一致；列是自由字符串，允许自定义值） */
+const PROCESS_CATEGORY_OPTIONS = [
+  "系统通用审批",
+  "人事类审批",
+  "财务费用审批",
+  "采购资产类审批",
+  "业务项目审批",
+  "对外流程审批",
+];
+
+// 分类受控 v-model：自定义输入超 255 字符时提示并截断（对齐后端 @Size(max = 255)）
+const categoryModel = computed({
+  get: () => processCategory.value,
+  set: (value: string) => {
+    if (value.length > 255) {
+      ElMessage.warning("流程分类不能超过255个字符");
+      processCategory.value = value.slice(0, 255);
+      return;
+    }
+    processCategory.value = value;
+  },
+});
 
 const zoomLevel = computed(() => store.zoomLevel);
 // 撤销/重做按钮状态：使用 computed 直接访问响应式源，确保响应式追踪
@@ -421,6 +452,10 @@ async function handleValidate() {
       }
 
       .process-key-input {
+        width: 220px;
+      }
+
+      .process-category-select {
         width: 220px;
       }
     }
