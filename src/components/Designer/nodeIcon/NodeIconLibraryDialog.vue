@@ -49,7 +49,7 @@
           </el-button>
         </div>
         <div class="node-icon-library__editor-desc">
-          配置后，该类型下所有未单独设置图标的节点将统一显示此图标。
+          配置后，该类型下所有未单独设置图标的节点将统一显示此图标；未配置时使用内置默认图标。
         </div>
         <NodeIconEditor
           :key="selectedType"
@@ -69,6 +69,7 @@ import { useFlowDesignerStore } from "@/stores/flow-designer";
 import type { NodeIconConfig, NodeType } from "@/api/logicflow";
 import { getNodeColor, getNodeLabel } from "@/api/logicflow";
 import NodeIconEditor from "./NodeIconEditor.vue";
+import { getBuiltinTypeIcon } from "./builtinIcons";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -130,7 +131,7 @@ const selectedType = ref<NodeType>("userTask");
 
 /** 所选类型的类型级默认图标 */
 const typeDefaultConfig = computed<NodeIconConfig | null>(
-  () => store.graphData.iconConfig?.[selectedType.value] ?? null
+  () => store.graphData.iconConfig?.[selectedType.value] ?? getBuiltinTypeIcon(selectedType.value)
 );
 
 /** 某类型是否已配置默认图标 */

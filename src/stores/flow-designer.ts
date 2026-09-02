@@ -10,6 +10,7 @@ import type {
 } from "@/api/logicflow";
 import { logicflowToBpmn20 } from "@/utils/logicflowToBpmn";
 import { processDefinitionApi, isValidIconConfig } from "@/api/logicflow";
+import { getBuiltinTypeIcon } from "@/components/Designer/nodeIcon/builtinIcons";
 
 /**
  * 深拷贝 FlowGraphData
@@ -261,7 +262,7 @@ export const useFlowDesignerStore = defineStore("flowDesigner", () => {
   /**
    * 获取节点实际生效的图标配置
    *
-   * 优先级：实例覆盖（显式 none 视为无图标）-> 类型级默认 -> 无图标
+   * 优先级：实例覆盖（显式 none 视为无图标）-> 类型级默认（显式 none 视为无图标）-> 内置类型默认
    */
   function getEffectiveNodeIcon(node: FlowNode): NodeIconConfig | null {
     const instance = node.properties?.iconConfig as NodeIconConfig | undefined;
@@ -270,8 +271,11 @@ export const useFlowDesignerStore = defineStore("flowDesigner", () => {
       if (isValidIconConfig(instance)) return instance;
     }
     const typeDefault = graphData.value.iconConfig?.[node.type];
-    if (isValidIconConfig(typeDefault)) return typeDefault;
-    return null;
+    if (typeDefault) {
+      if (typeDefault.iconType === "none") return null;
+      if (isValidIconConfig(typeDefault)) return typeDefault;
+    }
+    return getBuiltinTypeIcon(node.type);
   }
 
   /**

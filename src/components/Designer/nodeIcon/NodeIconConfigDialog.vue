@@ -46,6 +46,7 @@ import { useFlowDesignerStore } from "@/stores/flow-designer";
 import type { NodeIconConfig } from "@/api/logicflow";
 import { getNodeColor, getNodeLabel } from "@/api/logicflow";
 import NodeIconEditor from "./NodeIconEditor.vue";
+import { getBuiltinTypeIcon } from "./builtinIcons";
 
 const props = defineProps<{
   modelValue: boolean;
@@ -75,7 +76,7 @@ const editorIconConfig = computed<NodeIconConfig | null>(() => {
   if (!node.value) return null;
   const instance = node.value.properties?.iconConfig as NodeIconConfig | undefined;
   if (instance) return instance;
-  return store.graphData.iconConfig?.[node.value.type] ?? null;
+  return store.graphData.iconConfig?.[node.value.type] ?? getBuiltinTypeIcon(node.value.type);
 });
 
 const hasInstanceIconOverride = computed(() => !!node.value?.properties?.iconConfig);

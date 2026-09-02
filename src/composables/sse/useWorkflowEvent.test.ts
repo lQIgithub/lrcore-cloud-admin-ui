@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type * as ElementPlus from "element-plus";
 
 type SseHandler = (data: unknown) => void;
 
@@ -32,7 +31,7 @@ vi.mock("./useSse", () => ({
 }));
 
 vi.mock("element-plus", async (importOriginal) => {
-  const actual = await importOriginal<ElementPlus>();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return { ...actual, ElNotification: mocks.ElNotificationMock };
 });
 

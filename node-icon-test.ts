@@ -1,6 +1,6 @@
-import LogicFlow, { RectNodeModel } from "@logicflow/core";
+import LogicFlow, { RectNodeModel, PolygonNodeModel } from "@logicflow/core";
 import "@logicflow/core/dist/index.css";
-import { IconRectNode } from "@/components/Designer/nodeIcon/iconNodeViews";
+import { IconRectNode, IconPolygonNode } from "@/components/Designer/nodeIcon/iconNodeViews";
 import { setFlowIconConfig } from "@/components/Designer/nodeIcon/iconResolver";
 import "@/components/Designer/nodeIcon/nodeIcon.css";
 
@@ -13,13 +13,25 @@ class TestNodeModel extends RectNodeModel {
   }
 }
 
+class TestGatewayModel extends PolygonNodeModel {
+  initNodeData(data: unknown) {
+    super.initNodeData(data as LogicFlow.NodeConfig);
+    this.points = [
+      [40, 0],
+      [80, 40],
+      [40, 80],
+      [0, 40],
+    ];
+    this.text.value = "网关";
+  }
+}
+
 const container = document.getElementById("app") as HTMLElement;
 
 const lf = new LogicFlow({
   container,
   grid: { size: 20, type: "dot" },
   background: { color: "#fafafa" },
-  // 复刻真实应用的锚点主题（放大 + 蓝色）
 });
 
 lf.register({
@@ -27,54 +39,38 @@ lf.register({
   view: IconRectNode,
   model: TestNodeModel,
 });
+lf.register({
+  type: "exclusiveGateway",
+  view: IconPolygonNode,
+  model: TestGatewayModel,
+});
 
 lf.render({
   nodes: [
-    // n1: 预设图标（用户）
-    {
-      id: "n1",
-      type: "userTask",
-      x: 220,
-      y: 120,
-      properties: { iconConfig: { iconType: "preset", iconValue: "user" } },
-    },
-    // n2: 预设图标（审批）
+    // n1: 用户任务（无显式图标）-> 内置默认：小人(user)
+    { id: "n1", type: "userTask", x: 220, y: 120 },
+    // n2: 用户任务（显式预设 user）-> 小人
     {
       id: "n2",
       type: "userTask",
       x: 220,
       y: 280,
-      properties: { iconConfig: { iconType: "preset", iconValue: "approval" } },
+      properties: { iconConfig: { iconType: "preset", iconValue: "user" } },
     },
-    // n3: 自定义图标（必然加载失败 -> error 占位）
-    {
-      id: "n3",
-      type: "userTask",
-      x: 520,
-      y: 120,
-      properties: {
-        iconConfig: { iconType: "custom", iconValue: "http://127.0.0.1:1/not-exist.png" },
-      },
-    },
-    // n4: 自定义图标（data URI 立即成功 -> loaded 图片）
+    // n3: 排他网关（无显式图标）-> 内置默认：左右分枝(gateway)
+    { id: "n3", type: "exclusiveGateway", x: 520, y: 120 },
+    // n4: 排他网关（显式预设 gateway）-> 左右分枝
     {
       id: "n4",
-      type: "userTask",
+      type: "exclusiveGateway",
       x: 520,
       y: 280,
-      properties: {
-        iconConfig: {
-          iconType: "custom",
-          iconValue:
-            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cmVjdCB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiM0MDllZmYiLz48L3N2Zz4=",
-        },
-      },
+      properties: { iconConfig: { iconType: "preset", iconValue: "gateway" } },
     },
   ],
   edges: [],
 });
 
-// 复刻真实应用锚点主题
 lf.setTheme({
   anchor: {
     r: 8,

@@ -2,12 +2,13 @@
  * 节点图标模块 - 图标配置解析
  *
  * 维护当前流程的类型级图标默认值（graphData.iconConfig），
- * 并按「实例覆盖 -> 类型级默认 -> 无」的优先级解析节点实际生效的图标。
+ * 并按「实例覆盖 -> 类型级默认 -> 内置类型默认」的优先级解析节点实际生效的图标。
  */
 
 import type { NodeType } from "@/api/logicflow";
 import type { NodeIconConfig } from "./types";
 import { isValidIconConfig } from "./types";
+import { getBuiltinTypeIcon } from "./builtinIcons";
 
 /**
  * 流程级类型图标默认值注册表。
@@ -49,8 +50,9 @@ export function getFlowIconConfig(): Record<string, NodeIconConfig> {
  *   1. 实例覆盖：properties.iconConfig 显式存在时，
  *      - iconType=none 表示显式无图标（覆盖类型默认）
  *      - 有效配置直接采用
- *   2. 类型级默认：graphData.iconConfig[nodeType]
- *   3. 无图标
+ *   2. 类型级默认：graphData.iconConfig[nodeType]（显式 none 同时隐藏内置默认）
+ *   3. 内置类型默认图标（builtinIcons，新增节点自动携带）
+ *   4. 无图标
  *
  * @param nodeType 节点类型
  * @param properties 节点属性（含可能的实例覆盖 iconConfig）
@@ -67,10 +69,13 @@ export function resolveNodeIcon(
     if (isValidIconConfig(instance)) return instance;
   }
 
-  // 2. 类型级默认
+  // 2. 类型级默认（显式 none 时同时隐藏内置类型默认）
   const typeDefault = flowIconConfig[nodeType];
-  if (isValidIconConfig(typeDefault)) return typeDefault;
+  if (typeDefault) {
+    if (typeDefault.iconType === "none") return null;
+    if (isValidIconConfig(typeDefault)) return typeDefault;
+  }
 
-  // 3. 无图标
-  return null;
+  // 3. 内置类型默认图标
+  return getBuiltinTypeIcon(nodeType);
 }

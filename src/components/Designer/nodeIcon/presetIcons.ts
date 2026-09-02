@@ -255,11 +255,13 @@ export const PRESET_ICONS: PresetIcon[] = [
       "eventBasedGateway",
       "complexGateway",
     ],
+    // 采用调用(call)图标：三圆经斜线相连，表达网关对多分支的汇聚/分发
     elements: [
-      el("line", { x1: 6, y1: 3, x2: 6, y2: 15 }),
-      el("circle", { cx: 18, cy: 6, r: 3 }),
-      el("circle", { cx: 6, cy: 18, r: 3 }),
-      el("path", { d: "M18 9a9 9 0 0 1-9 9" }),
+      el("circle", { cx: 18, cy: 5, r: 3 }),
+      el("circle", { cx: 6, cy: 12, r: 3 }),
+      el("circle", { cx: 18, cy: 19, r: 3 }),
+      el("line", { x1: 8.59, y1: 13.51, x2: 15.42, y2: 17.49 }),
+      el("line", { x1: 15.41, y1: 6.51, x2: 8.59, y2: 10.49 }),
     ],
   },
   {

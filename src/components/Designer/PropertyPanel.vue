@@ -490,6 +490,7 @@ import { useFlowDesignerStore } from "@/stores/flow-designer";
 import type { NodeIconConfig } from "@/api/logicflow";
 import { getNodeLabel, type FlowNode, type FlowEdge, type NodeType } from "@/api/logicflow";
 import NodeIconEditor from "./nodeIcon/NodeIconEditor.vue";
+import { getBuiltinTypeIcon } from "./nodeIcon/builtinIcons";
 
 const store = useFlowDesignerStore();
 
@@ -617,7 +618,7 @@ const editorIconConfig = computed<NodeIconConfig | null>(() => {
   if (!node) return null;
   const instance = node.properties?.iconConfig as NodeIconConfig | undefined;
   if (instance) return instance;
-  return store.graphData.iconConfig?.[nodeForm.type] ?? null;
+  return store.graphData.iconConfig?.[nodeForm.type] ?? getBuiltinTypeIcon(nodeForm.type);
 });
 
 /** 当前节点是否配置了实例覆盖 */
@@ -628,7 +629,10 @@ const iconOriginTip = computed(() => {
   if (!store.currentNode) return "";
   if (hasInstanceIconOverride.value) return "当前为节点独立配置";
   const typeDefault = store.graphData.iconConfig?.[nodeForm.type];
-  return typeDefault && typeDefault.iconType !== "none" ? "沿用该类型默认图标" : "未配置图标";
+  if (typeDefault) {
+    return typeDefault.iconType !== "none" ? "沿用该类型默认图标" : "类型默认已隐藏图标";
+  }
+  return getBuiltinTypeIcon(nodeForm.type) ? "使用内置默认图标" : "未配置图标";
 });
 
 /** 编辑器变更：写入实例覆盖 */

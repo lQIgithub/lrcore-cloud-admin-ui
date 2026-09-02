@@ -32,7 +32,8 @@ function getNodeCustomIconUrl(model: IconBadgeModelLike): string {
  * 仅声明图标徽标所需字段，规避 RectNode/CircleNode/PolygonNode 泛型构造签名的差异，
  * 同时将 getShape 视为普通方法（非抽象），规避 super 调用抽象方法的报错。
  */
-type IconNodeViewCtor = new (...args: unknown[]) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type IconNodeViewCtor = new (...args: any[]) => {
   props: { model: IconBadgeModelLike; graphModel: IconBadgeGraphModelLike };
   base?: Element | Text | undefined;
   forceUpdate(): void;

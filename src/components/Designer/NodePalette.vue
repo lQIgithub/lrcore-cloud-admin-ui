@@ -1,169 +1,46 @@
 <template>
   <div class="node-palette">
-    <div class="node-palette__group">
-      <div class="node-palette__title">开始/结束</div>
+    <div v-for="group in PALETTE_GROUPS" :key="group.title" class="node-palette__group">
+      <div class="node-palette__title">{{ group.title }}</div>
       <div class="node-palette__items">
         <div
+          v-for="item in group.items"
+          :key="`${item.type}-${item.label}`"
           class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('startEvent', $event)"
+          :draggable="!item.action"
+          @dragstart="handleDragStart(item.type, $event)"
+          @click="handleQuickAction(item)"
         >
-          <div class="node-palette__item-icon start-event"></div>
-          <span class="node-palette__item-label">开始节点</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('endEvent', $event)"
-        >
-          <div class="node-palette__item-icon end-event"></div>
-          <span class="node-palette__item-label">结束节点</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="node-palette__group">
-      <div class="node-palette__title">任务节点</div>
-      <div class="node-palette__items">
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('userTask', $event)"
-        >
-          <div class="node-palette__item-icon user-task"></div>
-          <span class="node-palette__item-label">用户任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('serviceTask', $event)"
-        >
-          <div class="node-palette__item-icon service-task"></div>
-          <span class="node-palette__item-label">服务任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('scriptTask', $event)"
-        >
-          <div class="node-palette__item-icon script-task"></div>
-          <span class="node-palette__item-label">脚本任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('businessRuleTask', $event)"
-        >
-          <div class="node-palette__item-icon business-rule-task"></div>
-          <span class="node-palette__item-label">业务规则任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('manualTask', $event)"
-        >
-          <div class="node-palette__item-icon manual-task"></div>
-          <span class="node-palette__item-label">手动任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('receiveTask', $event)"
-        >
-          <div class="node-palette__item-icon receive-task"></div>
-          <span class="node-palette__item-label">接受任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('sendTask', $event)"
-        >
-          <div class="node-palette__item-icon send-task"></div>
-          <span class="node-palette__item-label">发送任务</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('callActivity', $event)"
-        >
-          <div class="node-palette__item-icon call-activity"></div>
-          <span class="node-palette__item-label">调用活动</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('subProcess', $event)"
-        >
-          <div class="node-palette__item-icon sub-process"></div>
-          <span class="node-palette__item-label">子流程</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('customNode', $event)"
-        >
-          <div class="node-palette__item-icon custom-node"></div>
-          <span class="node-palette__item-label">自定义节点</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="node-palette__group">
-      <div class="node-palette__title">网关节点</div>
-      <div class="node-palette__items">
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('exclusiveGateway', $event)"
-        >
-          <div class="node-palette__item-icon exclusive-gateway"></div>
-          <span class="node-palette__item-label">排他网关</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('parallelGateway', $event)"
-        >
-          <div class="node-palette__item-icon parallel-gateway"></div>
-          <span class="node-palette__item-label">并行网关</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('inclusiveGateway', $event)"
-        >
-          <div class="node-palette__item-icon inclusive-gateway"></div>
-          <span class="node-palette__item-label">包含网关</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('eventBasedGateway', $event)"
-        >
-          <div class="node-palette__item-icon event-based-gateway"></div>
-          <span class="node-palette__item-label">事件网关</span>
-        </div>
-        <div
-          class="node-palette__item"
-          draggable="true"
-          @dragstart="handleDragStart('complexGateway', $event)"
-        >
-          <div class="node-palette__item-icon complex-gateway"></div>
-          <span class="node-palette__item-label">复杂网关</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="node-palette__group">
-      <div class="node-palette__title">快捷操作</div>
-      <div class="node-palette__items">
-        <div class="node-palette__item" @click="addStartNode">
-          <div class="node-palette__item-icon start-event"></div>
-          <span class="node-palette__item-label">添加开始</span>
-        </div>
-        <div class="node-palette__item" @click="addEndNode">
-          <div class="node-palette__item-icon end-event"></div>
-          <span class="node-palette__item-label">添加结束</span>
+          <div class="node-palette__item-icon-wrap">
+            <div class="node-palette__item-icon" :class="item.iconClass">
+              <!-- 色块内嵌图形：与画布徽标共用预设图标源，风格/尺寸统一；网关菱形内反向旋转保持水平 -->
+              <svg
+                v-if="paletteIcon(item.type)"
+                class="node-palette__item-icon-svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <component
+                  :is="el.tag"
+                  v-for="(el, i) in paletteIcon(item.type)!.elements"
+                  :key="i"
+                  v-bind="el.attrs"
+                />
+              </svg>
+            </div>
+            <!-- 节点图标（流程级默认或内置类型默认）：右上角小徽标，拖入画布后自动跟随节点 -->
+            <NodeIconPreview
+              v-if="typeDefaultIcon(item.type)"
+              class="node-palette__item-icon-badge"
+              :config="typeDefaultIcon(item.type)"
+              :size="18"
+            />
+          </div>
+          <span class="node-palette__item-label">{{ item.label }}</span>
         </div>
       </div>
     </div>
@@ -173,15 +50,79 @@
 <script setup lang="ts">
 import { useFlowDesignerStore } from "@/stores/flow-designer";
 import { ElMessage } from "element-plus";
-import { createFlowNode, type NodeType } from "@/api/logicflow";
+import {
+  createFlowNode,
+  isValidIconConfig,
+  type NodeIconConfig,
+  type NodeType,
+} from "@/api/logicflow";
+import NodeIconPreview from "./nodeIcon/NodeIconPreview.vue";
+import { getBuiltinTypeIcon } from "./nodeIcon/builtinIcons";
+import { getPresetIcon } from "./nodeIcon/presetIcons";
 
 const store = useFlowDesignerStore();
+
+interface PaletteItem {
+  type: NodeType;
+  label: string;
+  iconClass: string;
+  /** 快捷操作：点击直接添加节点（不可拖拽） */
+  action?: "addStart" | "addEnd";
+}
+
+/** 面板分组（与 LogicFlowCanvas 快捷新增/图标库分类一致） */
+const PALETTE_GROUPS: { title: string; items: PaletteItem[] }[] = [
+  {
+    title: "开始/结束",
+    items: [
+      { type: "startEvent", label: "开始节点", iconClass: "start-event" },
+      { type: "endEvent", label: "结束节点", iconClass: "end-event" },
+    ],
+  },
+  {
+    title: "任务节点",
+    items: [
+      { type: "userTask", label: "用户任务", iconClass: "user-task" },
+      { type: "serviceTask", label: "服务任务", iconClass: "service-task" },
+      { type: "scriptTask", label: "脚本任务", iconClass: "script-task" },
+      { type: "businessRuleTask", label: "业务规则任务", iconClass: "business-rule-task" },
+      { type: "manualTask", label: "手动任务", iconClass: "manual-task" },
+      { type: "receiveTask", label: "接受任务", iconClass: "receive-task" },
+      { type: "sendTask", label: "发送任务", iconClass: "send-task" },
+      { type: "callActivity", label: "调用活动", iconClass: "call-activity" },
+      { type: "subProcess", label: "子流程", iconClass: "sub-process" },
+      { type: "customNode", label: "自定义节点", iconClass: "custom-node" },
+    ],
+  },
+  {
+    title: "网关节点",
+    items: [
+      { type: "exclusiveGateway", label: "排他网关", iconClass: "exclusive-gateway" },
+      { type: "parallelGateway", label: "并行网关", iconClass: "parallel-gateway" },
+      { type: "inclusiveGateway", label: "包含网关", iconClass: "inclusive-gateway" },
+      { type: "eventBasedGateway", label: "事件网关", iconClass: "event-based-gateway" },
+      { type: "complexGateway", label: "复杂网关", iconClass: "complex-gateway" },
+    ],
+  },
+  {
+    title: "快捷操作",
+    items: [
+      { type: "startEvent", label: "添加开始", iconClass: "start-event", action: "addStart" },
+      { type: "endEvent", label: "添加结束", iconClass: "end-event", action: "addEnd" },
+    ],
+  },
+];
 
 function handleDragStart(type: NodeType, event: DragEvent) {
   if (event.dataTransfer) {
     event.dataTransfer.setData("application/logicflow-node", type);
     event.dataTransfer.effectAllowed = "copy";
   }
+}
+
+function handleQuickAction(item: PaletteItem) {
+  if (item.action === "addStart") addStartNode();
+  else if (item.action === "addEnd") addEndNode();
 }
 
 function addStartNode() {
@@ -202,6 +143,28 @@ function addEndNode() {
   }
   const node = createFlowNode("endEvent", 400, 200);
   store.addNode(node);
+}
+
+/**
+ * 面板色块内嵌图形：取类型内置默认的预设图标（与画布徽标同一套图标源，风格统一）。
+ * 用户任务 -> 小人(user)，网关 -> 左右分枝(gateway)。
+ */
+function paletteIcon(type: NodeType) {
+  const cfg = getBuiltinTypeIcon(type);
+  return cfg?.iconType === "preset" ? getPresetIcon(cfg.iconValue) : undefined;
+}
+
+/**
+ * 节点图标：优先取流程级类型默认（图标库配置，存于 graphData.iconConfig），
+ * 未配置时回退内置类型默认；面板项右上角显示徽标，拖入画布的新节点自动携带，无需逐个自定义。
+ */
+function typeDefaultIcon(type: NodeType): NodeIconConfig | null {
+  const config = store.graphData.iconConfig?.[type];
+  if (config) {
+    if (config.iconType === "none") return null;
+    if (isValidIconConfig(config)) return config;
+  }
+  return getBuiltinTypeIcon(type);
 }
 </script>
 
@@ -255,11 +218,26 @@ function addEndNode() {
     }
   }
 
+  &__item-icon-wrap {
+    position: relative;
+  }
+
   &__item-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 32px;
     height: 32px;
     margin-bottom: 4px;
+    color: #fff;
     border-radius: 4px;
+
+    /* 色块内嵌图形：保持视觉居中、尺寸统一 */
+    &-svg {
+      width: 20px;
+      height: 20px;
+    }
 
     &.start-event {
       background: linear-gradient(135deg, #67c23a, #85ce61);
@@ -337,6 +315,26 @@ function addEndNode() {
     &.custom-node {
       background: linear-gradient(135deg, #9b59b6, #bb7bd6);
     }
+
+    /* 网关菱形容器内图形反向旋转，保持水平/垂直，避免跟随菱形倾斜 */
+    &.exclusive-gateway,
+    &.parallel-gateway,
+    &.inclusive-gateway,
+    &.event-based-gateway,
+    &.complex-gateway {
+      .node-palette__item-icon-svg {
+        transform: rotate(-45deg);
+      }
+    }
+  }
+
+  /* 类型级默认图标徽标：悬浮于类型色块右上角，不拦截拖拽/点击 */
+  &__item-icon-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    z-index: 1;
+    pointer-events: none;
   }
 
   &__item-label {
