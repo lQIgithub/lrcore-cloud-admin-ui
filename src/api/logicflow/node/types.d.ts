@@ -38,6 +38,22 @@ export type NodeType =
   | "customNode";
 
 /**
+ * 节点图标配置（类型级默认与实例覆盖共用）
+ *
+ * - 类型级默认：存于 graphData.iconConfig[NodeType]，随流程持久化
+ * - 实例覆盖：存于 node.properties.iconConfig
+ * - 生效优先级：实例覆盖 -> 类型级默认 -> 无图标
+ */
+export interface NodeIconConfig {
+  /** 图标来源 */
+  iconType: "preset" | "custom" | "none";
+  /** 图标值：preset 时为预设图标 key，custom 时为上传图片 URL */
+  iconValue: string;
+  /** 图标尺寸（px），可选，默认 24 */
+  iconSize?: number;
+}
+
+/**
  * LogicFlow节点数据结构
  */
 export interface FlowNode {

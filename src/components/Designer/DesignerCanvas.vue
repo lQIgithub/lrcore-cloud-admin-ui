@@ -39,6 +39,7 @@
         </el-radio-group>
       </div>
       <div class="toolbar-section">
+        <el-button :icon="Picture" size="small" @click="showIconLibrary = true">图标库</el-button>
         <el-button :icon="View" size="small" @click="showBpmnDialog = true">查看BPMN</el-button>
       </div>
     </div>
@@ -47,6 +48,9 @@
     <div ref="containerRef" class="lf-container">
       <LogicFlowCanvas ref="canvasRef" :graph-data="store.graphData" :mode="mode" />
     </div>
+
+    <!-- 节点图标库（流程级类型默认图标配置） -->
+    <NodeIconLibraryDialog v-model="showIconLibrary" />
 
     <!-- BPMN XML 预览对话框 -->
     <el-dialog v-model="showBpmnDialog" title="BPMN XML 预览" width="60%" :deep-destroy="true">
@@ -75,15 +79,18 @@ import {
   MagicStick,
   ArrowLeft,
   ArrowRight,
+  Picture,
 } from "@element-plus/icons-vue";
 import { useFlowDesignerStore } from "@/stores/flow-designer";
 import { layoutFlowGraph } from "@/utils/graphLayout";
 import LogicFlowCanvas from "./LogicFlowCanvas.vue";
+import NodeIconLibraryDialog from "./nodeIcon/NodeIconLibraryDialog.vue";
 
 const store = useFlowDesignerStore();
 
 const mode = ref<"edit" | "preview">("edit");
 const showBpmnDialog = ref(false);
+const showIconLibrary = ref(false);
 const containerRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<InstanceType<typeof LogicFlowCanvas> | null>(null);
 let resizeObserver: ResizeObserver | null = null;

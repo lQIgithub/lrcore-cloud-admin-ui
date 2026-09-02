@@ -213,8 +213,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from "vue";
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useWorkflowEvent } from "@/composables";
 import {
   processInstanceApi,
   processDefinitionApi,
@@ -249,11 +250,26 @@ const variableList = ref<Array<{ name: string; value: string }>>([]);
 const trendChartRef = ref<HTMLElement | null>(null);
 const taskChartRef = ref<HTMLElement | null>(null);
 
+/** 工作流 SSE 事件订阅（取消函数） */
+let stopWorkflowEvents: (() => void) | null = null;
+
 onMounted(() => {
   fetchStatistics();
   fetchProcessOptions();
   fetchInstances();
   initCharts();
+  // 工作流事件（任务/实例变更）到达时实时刷新统计与实例列表
+  stopWorkflowEvents = useWorkflowEvent().onWorkflowEvent(() => {
+    fetchStatistics();
+    fetchInstances();
+  });
+});
+
+onBeforeUnmount(() => {
+  if (stopWorkflowEvents) {
+    stopWorkflowEvents();
+    stopWorkflowEvents = null;
+  }
 });
 
 async function fetchStatistics() {

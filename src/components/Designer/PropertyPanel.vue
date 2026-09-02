@@ -28,6 +28,31 @@
         </div>
       </div>
 
+      <!-- 节点图标配置：类型默认 + 实例覆盖 -->
+      <div class="property-panel__section">
+        <div class="property-panel__title">
+          <el-icon><Picture /></el-icon>
+          <span>节点图标</span>
+        </div>
+        <NodeIconEditor
+          :model-value="editorIconConfig"
+          :node-type="nodeForm.type"
+          @update:model-value="onIconConfigChange"
+        />
+        <div class="property-panel__icon-footer">
+          <el-button
+            size="small"
+            text
+            type="primary"
+            :disabled="!hasInstanceIconOverride"
+            @click="resetNodeIcon"
+          >
+            恢复类型默认
+          </el-button>
+          <span class="property-panel__icon-tip">{{ iconOriginTip }}</span>
+        </div>
+      </div>
+
       <!-- 用户任务属性 -->
       <template v-if="nodeForm.type === 'userTask'">
         <div class="property-panel__section">
@@ -460,8 +485,11 @@
 
 <script setup lang="ts">
 import { reactive, computed, watch } from "vue";
+import { Picture } from "@element-plus/icons-vue";
 import { useFlowDesignerStore } from "@/stores/flow-designer";
+import type { NodeIconConfig } from "@/api/logicflow";
 import { getNodeLabel, type FlowNode, type FlowEdge, type NodeType } from "@/api/logicflow";
+import NodeIconEditor from "./nodeIcon/NodeIconEditor.vue";
 
 const store = useFlowDesignerStore();
 
@@ -577,6 +605,43 @@ function handleDeleteEdge() {
     store.removeEdge(store.currentEdge.id);
   }
 }
+
+// ==================== 节点图标配置 ====================
+
+/**
+ * 编辑器绑定值：优先取实例覆盖（保留显式 none），否则回退类型级默认。
+ * 与 getEffectiveNodeIcon 的区别在于不丢弃显式 none，保证「无图标」状态可编辑。
+ */
+const editorIconConfig = computed<NodeIconConfig | null>(() => {
+  const node = store.currentNode;
+  if (!node) return null;
+  const instance = node.properties?.iconConfig as NodeIconConfig | undefined;
+  if (instance) return instance;
+  return store.graphData.iconConfig?.[nodeForm.type] ?? null;
+});
+
+/** 当前节点是否配置了实例覆盖 */
+const hasInstanceIconOverride = computed(() => !!store.currentNode?.properties?.iconConfig);
+
+/** 图标来源提示：说明当前生效配置的来源层级 */
+const iconOriginTip = computed(() => {
+  if (!store.currentNode) return "";
+  if (hasInstanceIconOverride.value) return "当前为节点独立配置";
+  const typeDefault = store.graphData.iconConfig?.[nodeForm.type];
+  return typeDefault && typeDefault.iconType !== "none" ? "沿用该类型默认图标" : "未配置图标";
+});
+
+/** 编辑器变更：写入实例覆盖 */
+function onIconConfigChange(config: NodeIconConfig | null) {
+  if (!store.currentNode) return;
+  store.updateNodeIcon(store.currentNode.id, config);
+}
+
+/** 恢复类型默认：清除实例覆盖，回退到类型级默认 */
+function resetNodeIcon() {
+  if (!store.currentNode) return;
+  store.updateNodeIcon(store.currentNode.id, null);
+}
 </script>
 
 <style scoped lang="scss">
@@ -643,6 +708,20 @@ function handleDeleteEdge() {
   &__value {
     font-size: 13px;
     color: #303133;
+  }
+
+  // 节点图标配置底部：恢复默认按钮 + 来源提示
+  &__icon-footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  &__icon-tip {
+    font-size: 12px;
+    color: #909399;
   }
 }
 </style>

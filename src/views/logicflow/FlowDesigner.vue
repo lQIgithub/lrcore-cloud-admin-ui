@@ -2,22 +2,6 @@
   <div class="designer-layout">
     <!-- 顶部工具栏 -->
     <div class="designer-layout__header">
-      <div class="header-left">
-        <el-menu mode="horizontal" :default-active="'designer'" class="header-menu">
-          <el-menu-item index="designer">
-            <el-icon><Connection /></el-icon>
-            <span>流程设计器</span>
-          </el-menu-item>
-          <el-menu-item index="processes" @click="$router.push('/processes')">
-            <el-icon><Document /></el-icon>
-            <span>流程管理</span>
-          </el-menu-item>
-          <el-menu-item index="monitor" @click="$router.push('/monitor')">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>流程监控</span>
-          </el-menu-item>
-        </el-menu>
-      </div>
       <div class="header-center">
         <el-input v-model="processName" placeholder="请输入流程名称" class="process-name-input">
           <template #prepend>流程名称</template>
@@ -126,9 +110,6 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
-  Connection,
-  Document,
-  DataAnalysis,
   Plus,
   FolderAdd,
   Upload,
@@ -429,16 +410,6 @@ async function handleValidate() {
     padding: 8px 16px;
     background: #fff;
     border-bottom: 1px solid #e4e7ed;
-
-    .header-left {
-      display: flex;
-      flex-shrink: 0;
-      align-items: center;
-
-      .header-menu {
-        border: none;
-      }
-    }
 
     .header-center {
       display: flex;

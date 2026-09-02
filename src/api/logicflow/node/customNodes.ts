@@ -5,14 +5,12 @@
  */
 
 import type LogicFlow from "@logicflow/core";
+import { CircleNodeModel, RectNodeModel, PolygonNodeModel } from "@logicflow/core";
 import {
-  CircleNodeModel,
-  RectNodeModel,
-  PolygonNodeModel,
-  CircleNode,
-  RectNode,
-  PolygonNode,
-} from "@logicflow/core";
+  IconCircleNode,
+  IconRectNode,
+  IconPolygonNode,
+} from "@/components/Designer/nodeIcon/iconNodeViews";
 
 /**
  * 对象合并：保留 target 类型，将 source 的属性覆盖到副本上
@@ -522,71 +520,71 @@ function withNodeDataId(ModelClass: { prototype: object }): void {
  */
 export const CustomNodes = {
   startEvent: {
-    view: CircleNode,
+    view: IconCircleNode,
     model: StartNodeModel,
   },
   endEvent: {
-    view: CircleNode,
+    view: IconCircleNode,
     model: EndNodeModel,
   },
   userTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: UserTaskNodeModel,
   },
   serviceTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: ServiceTaskNodeModel,
   },
   scriptTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: ScriptTaskNodeModel,
   },
   businessRuleTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: BusinessRuleTaskNodeModel,
   },
   manualTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: ManualTaskNodeModel,
   },
   receiveTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: ReceiveTaskNodeModel,
   },
   sendTask: {
-    view: RectNode,
+    view: IconRectNode,
     model: SendTaskNodeModel,
   },
   callActivity: {
-    view: RectNode,
+    view: IconRectNode,
     model: CallActivityNodeModel,
   },
   subProcess: {
-    view: RectNode,
+    view: IconRectNode,
     model: SubProcessNodeModel,
   },
   exclusiveGateway: {
-    view: PolygonNode,
+    view: IconPolygonNode,
     model: ExclusiveGatewayNodeModel,
   },
   parallelGateway: {
-    view: PolygonNode,
+    view: IconPolygonNode,
     model: ParallelGatewayNodeModel,
   },
   inclusiveGateway: {
-    view: PolygonNode,
+    view: IconPolygonNode,
     model: InclusiveGatewayNodeModel,
   },
   eventBasedGateway: {
-    view: PolygonNode,
+    view: IconPolygonNode,
     model: EventBasedGatewayNodeModel,
   },
   complexGateway: {
-    view: PolygonNode,
+    view: IconPolygonNode,
     model: ComplexGatewayNodeModel,
   },
   customNode: {
-    view: RectNode,
+    view: IconRectNode,
     model: CustomNodeModel,
   },
 };

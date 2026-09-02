@@ -1,0 +1,74 @@
+/**
+ * 节点图标模块 - 徽标样式（全局，非 scoped）
+ *
+ * LogicFlow 节点由 preact 在画布 SVG 内渲染，不在 Vue 模板作用域内，
+ * 因此徽标样式必须定义为全局样式。颜色全部使用 Element Plus CSS 变量，
+ * 亮色/暗色主题自动适配。
+ */
+
+/* 徽标容器 */
+.lf-node-icon-badge {
+  color: var(--el-text-color-primary);
+  cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+  transition: filter 0.2s ease;
+}
+
+/* 徽标背景：使用主题背景色 + 边框，亮暗主题下均与节点内容形成对比 */
+.lf-node-icon-badge__bg {
+  fill: var(--el-bg-color);
+  stroke: var(--el-border-color);
+  stroke-width: 1.2;
+}
+
+/* 徽标内图标（预设/占位）用 currentColor，随主题文字色变化 */
+.lf-node-icon-badge__icon {
+  color: var(--el-text-color-primary);
+}
+
+/* 悬停态：放大投影 + 背景高亮（CSS :hover 直接作用于 SVG 元素） */
+.lf-node-icon-badge:hover .lf-node-icon-badge__bg,
+.lf-node-icon-badge--hovered .lf-node-icon-badge__bg {
+  fill: var(--el-color-primary-light-9);
+  stroke: var(--el-color-primary);
+  stroke-width: 1.6;
+}
+.lf-node-icon-badge:hover {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.28));
+}
+
+/* 选中态：主色描边 + 主色图标 */
+.lf-node-icon-badge--selected .lf-node-icon-badge__bg {
+  fill: var(--el-color-primary-light-9);
+  stroke: var(--el-color-primary);
+  stroke-width: 1.8;
+}
+.lf-node-icon-badge--selected .lf-node-icon-badge__icon {
+  color: var(--el-color-primary);
+}
+
+/* 加载中占位：外层 <g> 仅负责定位（SVG transform 属性），动画不作用于外层，
+   否则 CSS animation 的 transform 会覆盖 SVG transform 属性导致图标偏移/脱位 */
+.lf-node-icon-badge__icon--loading {
+  color: var(--el-text-color-secondary);
+}
+/* 旋转动画作用于内层 <g>：fill-box 以圆圈包围盒为参考，
+   transform-origin: center 使旋转围绕圆圈圆心，避免偏移 */
+.lf-node-icon-badge__icon-spin {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: lf-icon-spin 1s linear infinite;
+}
+@keyframes lf-icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 加载失败：弱化显示 */
+.lf-node-icon-badge__icon--error {
+  color: var(--el-color-danger);
+}

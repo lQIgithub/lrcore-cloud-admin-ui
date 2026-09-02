@@ -84,6 +84,20 @@
         </ul>
       </template>
     </div>
+
+    <!-- 图标徽标悬浮提示 -->
+    <transition name="lf-icon-tooltip">
+      <div
+        v-if="iconTooltip.visible"
+        class="lf-icon-tooltip"
+        :style="{ left: iconTooltip.x + 'px', top: iconTooltip.y + 'px' }"
+      >
+        {{ iconTooltip.title }}
+      </div>
+    </transition>
+
+    <!-- 图标徽标点击 -> 节点图标配置弹窗 -->
+    <NodeIconConfigDialog v-model="iconConfigDialogVisible" :node-id="iconConfigDialogNodeId" />
   </div>
 </template>
 
@@ -101,6 +115,9 @@ import "@logicflow/core/dist/index.css";
 import "@logicflow/extension/lib/style/index.css";
 import { ElMessage } from "element-plus";
 import { useFlowDesignerStore } from "@/stores/flow-designer";
+import { setFlowIconConfig } from "@/components/Designer/nodeIcon/iconResolver";
+import NodeIconConfigDialog from "@/components/Designer/nodeIcon/NodeIconConfigDialog.vue";
+import "@/components/Designer/nodeIcon/nodeIcon.css";
 import {
   CustomNodes,
   createFlowNode,
@@ -231,6 +248,67 @@ const quickAddMenu = reactive<QuickAddMenuState>({
 let quickAddCloseTimer: ReturnType<typeof setTimeout> | null = null;
 // 程序化缩放标记：适应画布等操作期间不把中间态同步回 store.zoomLevel
 let programmaticZoom = false;
+
+// ==================== 图标徽标交互（tooltip + 配置弹窗） ====================
+
+/** 图标徽标悬浮提示状态（画布相对坐标） */
+const iconTooltip = reactive<{
+  visible: boolean;
+  x: number;
+  y: number;
+  title: string;
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  title: "",
+});
+
+/** 图标徽标点击 -> 节点图标配置弹窗 */
+const iconConfigDialogVisible = ref(false);
+const iconConfigDialogNodeId = ref("");
+
+/** 隐藏图标徽标悬浮提示 */
+function hideIconTooltip() {
+  iconTooltip.visible = false;
+}
+
+/**
+ * 处理图标徽标 tooltip 事件：
+ * 将视口坐标转换为画布相对坐标，并显示/隐藏悬浮提示。
+ */
+function handleIconTooltip(payload: {
+  nodeId: string;
+  title: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}) {
+  if (!payload.visible) {
+    hideIconTooltip();
+    return;
+  }
+  const rect = canvasRef.value?.getBoundingClientRect();
+  if (!rect) return;
+  iconTooltip.visible = true;
+  iconTooltip.title = payload.title;
+  // 在光标右下偏移，避免遮挡徽标本体
+  iconTooltip.x = payload.x - rect.left + 14;
+  iconTooltip.y = payload.y - rect.top + 14;
+}
+
+/** 处理图标徽标点击：选中节点并打开配置弹窗（仅编辑模式） */
+function handleIconConfig({ nodeId }: { nodeId: string }) {
+  if (props.mode !== "edit") return;
+  const node = store.graphData.nodes.find((n) => n.id === nodeId);
+  if (!node) return;
+  // 画布上高亮选中该节点（徽标自身已 stopPropagation，需手动触发选中）
+  lfInstance.value?.selectElementById(nodeId);
+  // 同步选中，右侧属性面板联动展示
+  store.setSelection(node, "node");
+  iconConfigDialogNodeId.value = nodeId;
+  iconConfigDialogVisible.value = true;
+}
 
 // 弹框图标配置（按节点类型配置生成一次）
 const QUICK_ADD_TARGETS: QuickAddTarget[] = QUICK_ADD_TARGET_TYPES.map((type) => ({
@@ -536,9 +614,11 @@ onMounted(() => {
   // 点击空白处或画布缩放/平移时关闭弹框，避免菜单位置残留
   lfInstance.value.on("blank:click", () => {
     closeQuickAddMenu();
+    hideIconTooltip();
   });
   lfInstance.value.on("graph:transform", () => {
     closeQuickAddMenu();
+    hideIconTooltip();
     // 用户通过滚轮/手势缩放画布时，将实际缩放比例同步回 store（程序化缩放除外）
     if (!programmaticZoom) {
       const scale = lfInstance.value?.getTransform().SCALE_X ?? 1;
@@ -547,6 +627,10 @@ onMounted(() => {
       }
     }
   });
+
+  // 图标徽标交互：悬浮提示 + 点击打开配置弹窗
+  lfInstance.value.on("node:icon-tooltip", handleIconTooltip);
+  lfInstance.value.on("node:icon-config", handleIconConfig);
 });
 
 onBeforeUnmount(() => {
@@ -569,7 +653,19 @@ watch(
     closeQuickAddMenu();
     clearOutgoingEdgeHighlight();
     hoveredNodeId.value = null;
+    hideIconTooltip();
+    // 离开编辑模式时关闭图标配置弹窗
+    if (props.mode !== "edit") {
+      iconConfigDialogVisible.value = false;
+    }
   }
+);
+
+// 监听流程级类型默认图标配置变化，同步到图标解析器（节点视图订阅后重渲染徽标）
+watch(
+  () => props.graphData.iconConfig,
+  (config) => setFlowIconConfig(config),
+  { deep: true, immediate: true }
 );
 
 // 监听 store 缩放级别并应用到画布（放大/缩小/适应画布按钮均通过 store 驱动）
@@ -1421,6 +1517,32 @@ defineExpose({
       font-size: 12px;
       word-break: break-all;
     }
+  }
+
+  // 图标徽标悬浮提示
+  .lf-icon-tooltip {
+    position: absolute;
+    z-index: 22;
+    max-width: 260px;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--el-text-color-primary);
+    pointer-events: none;
+    background: var(--el-bg-color);
+    border: 1px solid var(--el-border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .lf-icon-tooltip-enter-active,
+  .lf-icon-tooltip-leave-active {
+    transition: opacity 0.15s ease;
+  }
+
+  .lf-icon-tooltip-enter-from,
+  .lf-icon-tooltip-leave-to {
+    opacity: 0;
   }
 }
 </style>

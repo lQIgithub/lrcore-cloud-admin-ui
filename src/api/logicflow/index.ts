@@ -16,6 +16,7 @@ export { default as monitorApi } from "./monitor/flowMonitor";
 // ==================== 节点相关（值 + 配置） ====================
 export { CustomNodes, nodeTypeConfig } from "./node/customNodes";
 export * from "./node/nodeConfig";
+export * from "./node/iconConfig";
 
 // ==================== 类型统一出口 ====================
 export type * from "./definiton/types.d";

@@ -6,9 +6,10 @@ import type {
   FlowEdge,
   ProcessDefinitionVO,
   NodeType,
+  NodeIconConfig,
 } from "@/api/logicflow";
 import { logicflowToBpmn20 } from "@/utils/logicflowToBpmn";
-import { processDefinitionApi } from "@/api/logicflow";
+import { processDefinitionApi, isValidIconConfig } from "@/api/logicflow";
 
 /**
  * 深拷贝 FlowGraphData
@@ -220,6 +221,57 @@ export const useFlowDesignerStore = defineStore("flowDesigner", () => {
   function addEdge(edge: FlowEdge): void {
     graphData.value.edges.push(edge);
     pushHistory();
+  }
+
+  /**
+   * 更新节点类型的默认图标配置（流程级，随 graphData.iconConfig 持久化）
+   *
+   * @param type 节点类型
+   * @param config 图标配置；传 null 时清除该类型的默认图标
+   */
+  function updateNodeIconConfig(type: NodeType, config: NodeIconConfig | null): void {
+    const iconConfig = { ...(graphData.value.iconConfig ?? {}) };
+    if (config) {
+      iconConfig[type] = config;
+    } else {
+      delete iconConfig[type];
+    }
+    graphData.value = { ...graphData.value, iconConfig };
+    pushHistory();
+  }
+
+  /**
+   * 更新单个节点的图标覆盖（实例级，存于 node.properties.iconConfig）
+   *
+   * @param id 节点 id
+   * @param config 图标配置；传 null 时清除实例覆盖（回退到类型默认）
+   */
+  function updateNodeIcon(id: string, config: NodeIconConfig | null): void {
+    const node = graphData.value.nodes.find((n) => n.id === id);
+    if (!node) return;
+    const properties = { ...node.properties };
+    if (config) {
+      properties.iconConfig = config;
+    } else {
+      delete properties.iconConfig;
+    }
+    updateNode(id, { properties });
+  }
+
+  /**
+   * 获取节点实际生效的图标配置
+   *
+   * 优先级：实例覆盖（显式 none 视为无图标）-> 类型级默认 -> 无图标
+   */
+  function getEffectiveNodeIcon(node: FlowNode): NodeIconConfig | null {
+    const instance = node.properties?.iconConfig as NodeIconConfig | undefined;
+    if (instance) {
+      if (instance.iconType === "none") return null;
+      if (isValidIconConfig(instance)) return instance;
+    }
+    const typeDefault = graphData.value.iconConfig?.[node.type];
+    if (isValidIconConfig(typeDefault)) return typeDefault;
+    return null;
   }
 
   /**
@@ -488,6 +540,9 @@ export const useFlowDesignerStore = defineStore("flowDesigner", () => {
     updateNode,
     applyNodePositions,
     removeNode,
+    updateNodeIconConfig,
+    updateNodeIcon,
+    getEffectiveNodeIcon,
     addEdge,
     updateEdge,
     removeEdge,

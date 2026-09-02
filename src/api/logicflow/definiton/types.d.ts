@@ -1,4 +1,4 @@
-import type { FlowNode, FlowEdge } from "../node/types.d";
+import type { FlowNode, FlowEdge, NodeType, NodeIconConfig } from "../node/types.d";
 
 /**
  * 流程图数据结构
@@ -6,6 +6,8 @@ import type { FlowNode, FlowEdge } from "../node/types.d";
 export interface FlowGraphData {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  /** 各节点类型的默认图标配置（随流程持久化） */
+  iconConfig?: Partial<Record<NodeType, NodeIconConfig>>;
 }
 
 /**
