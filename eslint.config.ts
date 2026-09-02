@@ -23,6 +23,8 @@ export default [
       "**/auto-imports.d.ts",
       "**/components.d.ts",
       "src/types/**/*.d.ts",
+      "node-icon-test.ts",
+      "node-icon-test.html",
     ],
   },
 
