@@ -1,9 +1,6 @@
 import request from "@/utils/request";
-// 请求体在 request 拦截器中会进行 AES 加密并作为字符串发送。
-// 开发环境 Mock 无法解析 application/json 下的加密字符串，
-// 因此带请求体的调用显式声明 text/plain，让 mock 能读取原始加密体进行解密。
-const ENCRYPTED_BODY_HEADERS = { "Content-Type": "text/plain" };
 
+import type { PageResult } from "@/api/common";
 import type {
   ProcessInstanceVO,
   StartProcessInstanceVO,
@@ -16,88 +13,77 @@ const SYSTEM_BASE_PREFIX = "/lrcore-system";
 const WORKFLOW_PROCESSINSTANCE_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/workflow/processInstance";
 
 /**
- * 流程实例API
+ * 流程实例API（RESTful）
  *
  * 注意：request 的响应拦截器已拆掉 ApiResult 壳，
  * 返回 Promise 解析值即为 data 载荷本身，不是 { code, success, data } 信封。
+ * AES 加解密已停用，带 body 的调用使用默认 application/json。
  */
 const processInstanceApi = {
-  /** 启动流程实例 */
+  /** 我的申请列表（分页），返回 { list, total } */
+  list(queryParams?: QueryProcessInstanceVO): Promise<PageResult<ProcessInstanceVO>> {
+    return request<unknown, PageResult<ProcessInstanceVO>>({
+      url: WORKFLOW_PROCESSINSTANCE_BASE_URL,
+      method: "get",
+      params: queryParams,
+    });
+  },
+
+  /** 启动流程实例（请假申请） */
   start(data: StartProcessInstanceVO): Promise<ProcessInstanceVO> {
     return request<unknown, ProcessInstanceVO>({
       url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/start`,
       method: "post",
       data,
-      headers: ENCRYPTED_BODY_HEADERS,
-    });
-  },
-
-  /** 获取实例列表 */
-  list(queryParams?: QueryProcessInstanceVO): Promise<ProcessInstanceVO[]> {
-    return request<unknown, ProcessInstanceVO[]>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/list`,
-      method: "get",
-      params: queryParams,
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 
   /** 获取实例详情 */
   getById(id: string): Promise<ProcessInstanceVO> {
     return request<unknown, ProcessInstanceVO>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/getInfo/${id}`,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}`,
       method: "get",
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 
   /** 查询流程变量 */
   getVariables(id: string): Promise<Record<string, unknown>> {
-    // 后端为 @GetMapping("/getVariables") + @RequestParam("id")，id 走 query 参数
     return request<unknown, Record<string, unknown>>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/getVariables`,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}/variables`,
       method: "get",
-      params: { id },
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 
   /** 设置流程变量 */
-  setVariables(data: ProcessInstancevAriablesVO): Promise<boolean> {
+  setVariables(id: string, data: ProcessInstancevAriablesVO): Promise<boolean> {
     return request<unknown, boolean>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/setVariables`,
-      method: "post",
-      data,
-      headers: ENCRYPTED_BODY_HEADERS,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}/variables`,
+      method: "put",
+      data: data.variables ?? {},
     });
   },
 
-  /** 删除流程实例 */
+  /** 终止并删除流程实例 */
   delete(id: string): Promise<boolean> {
     return request<unknown, boolean>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/delete/${id}`,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}`,
       method: "delete",
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 
   /** 挂起流程实例 */
   suspend(id: string): Promise<boolean> {
     return request<unknown, boolean>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/suspend`,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}/suspend`,
       method: "post",
-      params: { id },
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 
   /** 激活流程实例 */
   activate(id: string): Promise<boolean> {
     return request<unknown, boolean>({
-      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/activate`,
+      url: `${WORKFLOW_PROCESSINSTANCE_BASE_URL}/${id}/activate`,
       method: "post",
-      params: { id },
-      headers: ENCRYPTED_BODY_HEADERS,
     });
   },
 };

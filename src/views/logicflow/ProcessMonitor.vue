@@ -296,12 +296,14 @@ async function fetchProcessOptions() {
 async function fetchInstances() {
   instancesLoading.value = true;
   try {
-    const list = await processInstanceApi.list({
+    const page = await processInstanceApi.list({
       processDefinitionKey: filterForm.processKey || undefined,
       status: filterForm.status || undefined,
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
     });
-    instanceList.value = Array.isArray(list) ? list : [];
-    total.value = instanceList.value.length;
+    instanceList.value = page?.list ?? [];
+    total.value = page?.total ?? 0;
   } catch {
     ElMessage.error("获取实例列表失败");
   } finally {

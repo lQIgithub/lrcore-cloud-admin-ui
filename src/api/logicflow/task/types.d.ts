@@ -18,6 +18,9 @@ export interface TaskVO {
 export interface QueryTaskVo {
   assignee?: string;
   processInstanceId?: string;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
 }
 
 /**
@@ -27,6 +30,7 @@ export interface ClaimTaskVo {
   id: string;
   userId: string;
 }
+
 /**
  * 完成任务参数
  */
@@ -34,10 +38,18 @@ export interface CompleteTaskVo {
   id: string;
   variables?: Record<string, unknown>;
 }
+
 /**
- * 完成任务参数
+ * 驳回任务参数
  */
-export interface transferTaskVo {
+export interface RejectTaskVo {
+  comment?: string;
+}
+
+/**
+ * 转办任务参数
+ */
+export interface TransferaskVo {
   id: string;
   targetUserId: string;
 }

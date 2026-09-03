@@ -12,7 +12,10 @@ export interface StartProcessInstanceVO {
  */
 export interface QueryProcessInstanceVO {
   processDefinitionKey?: string;
-  status?: string;
+  businessKey?: string;
+  status?: "active" | "suspended" | "completed" | "terminated" | string;
+  pageNum?: number;
+  pageSize?: number;
 }
 
 /**

@@ -44,9 +44,17 @@ function ok(data: unknown) {
   };
 }
 
-/** 解析请求体（已加密） */
+/** 解析请求体：优先按普通 JSON 解析（AES 已停用），兼容历史 AES 密文 */
 function bodyOf(body: unknown): any {
   if (typeof body !== "string" || !body) return undefined;
+  const trimmed = body.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return undefined;
+    }
+  }
   try {
     return decrypt(body);
   } catch {
@@ -409,6 +417,9 @@ export default defineMock([
         ? String(query.processDefinitionKey)
         : "";
       const status = query?.status ? String(query.status) : "";
+      const businessKey = query?.businessKey ? String(query.businessKey) : "";
+      const pageNum = Number(query?.pageNum || 1);
+      const pageSize = Number(query?.pageSize || 10);
       let list = db.processInstances;
       if (processDefinitionKey) {
         list = list.filter((p) => p.processDefinitionKey === processDefinitionKey);
@@ -416,7 +427,12 @@ export default defineMock([
       if (status) {
         list = list.filter((p) => p.status === status);
       }
-      return ok(list);
+      if (businessKey) {
+        list = list.filter((p) => p.businessKey === businessKey);
+      }
+      const total = list.length;
+      const start = (pageNum - 1) * pageSize;
+      return ok({ list: list.slice(start, start + pageSize), total });
     },
   },
   {
@@ -492,6 +508,8 @@ export default defineMock([
     body: ({ query }) => {
       const assignee = query?.assignee ? String(query.assignee) : "";
       const processInstanceId = query?.processInstanceId ? String(query.processInstanceId) : "";
+      const pageNum = Number(query?.pageNum || 1);
+      const pageSize = Number(query?.pageSize || 10);
       let list = db.tasks;
       if (assignee) {
         list = list.filter((t) => t.assignee === assignee);
@@ -499,7 +517,9 @@ export default defineMock([
       if (processInstanceId) {
         list = list.filter((t) => t.processInstanceId === processInstanceId);
       }
-      return ok(list);
+      const total = list.length;
+      const start = (pageNum - 1) * pageSize;
+      return ok({ list: list.slice(start, start + pageSize), total });
     },
   },
   {
@@ -535,6 +555,19 @@ export default defineMock([
         task.status = "completed";
       }
       void body;
+      return ok(null);
+    },
+  },
+  {
+    url: "/dev-api/lrcore-system/api/v1/workflow/processTask/:id/reject",
+    method: ["POST"],
+    body: ({ params, body }) => {
+      const task = db.tasks.find((t) => t.id === params.id);
+      const data = bodyOf(body) || {};
+      if (task) {
+        task.status = "completed";
+        task.rejectComment = data.comment || "";
+      }
       return ok(null);
     },
   },

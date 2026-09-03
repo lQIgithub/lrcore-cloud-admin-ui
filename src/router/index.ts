@@ -99,6 +99,24 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/logicflow/ProcessList.vue"),
         meta: { title: "流程列表", icon: "user", hidden: true },
       },
+      {
+        path: "/workflow/leave-apply",
+        name: "LeaveApply",
+        component: () => import("@/views/logicflow/LeaveApply.vue"),
+        meta: { title: "发起请假", icon: "user", hidden: true },
+      },
+      {
+        path: "/workflow/my-applications",
+        name: "MyApplications",
+        component: () => import("@/views/logicflow/MyApplications.vue"),
+        meta: { title: "我的申请", icon: "user", hidden: true },
+      },
+      {
+        path: "/workflow/todo-tasks",
+        name: "TodoTasks",
+        component: () => import("@/views/logicflow/TodoTasks.vue"),
+        meta: { title: "待办审批", icon: "user", hidden: true },
+      },
     ],
   },
 ];
