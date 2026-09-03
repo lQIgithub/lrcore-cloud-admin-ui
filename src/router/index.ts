@@ -99,23 +99,33 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/logicflow/ProcessList.vue"),
         meta: { title: "流程列表", icon: "user", hidden: true },
       },
+    ],
+  },
+
+  // 请假工作流静态菜单（用于前置测试，未接入后端菜单时也可直接访问）
+  {
+    path: "/workflow",
+    component: Layout,
+    redirect: "/workflow/leave-apply",
+    meta: { title: "请假工作流", icon: "el-icon-s-order" },
+    children: [
       {
-        path: "/workflow/leave-apply",
+        path: "leave-apply",
         name: "LeaveApply",
         component: () => import("@/views/logicflow/LeaveApply.vue"),
-        meta: { title: "发起请假", icon: "user", hidden: true },
+        meta: { title: "发起请假", icon: "el-icon-edit" },
       },
       {
-        path: "/workflow/my-applications",
+        path: "my-applications",
         name: "MyApplications",
         component: () => import("@/views/logicflow/MyApplications.vue"),
-        meta: { title: "我的申请", icon: "user", hidden: true },
+        meta: { title: "我的申请", icon: "el-icon-tickets" },
       },
       {
-        path: "/workflow/todo-tasks",
+        path: "todo-tasks",
         name: "TodoTasks",
         component: () => import("@/views/logicflow/TodoTasks.vue"),
-        meta: { title: "待办审批", icon: "user", hidden: true },
+        meta: { title: "待办审批", icon: "el-icon-finished" },
       },
     ],
   },
