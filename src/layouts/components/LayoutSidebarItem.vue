@@ -49,16 +49,15 @@
         :key="child.path"
         :is-nest="true"
         :item="child"
-        :base-path="resolvePath(child.path)"
+        :base-path="resolvePath(item.path)"
       />
     </el-sub-menu>
   </div>
 </template>
 
 <script setup lang="ts">
-import path from "path-browserify";
 import type { RouteRecordRaw } from "vue-router";
-import { isExternal } from "@/utils";
+import { resolveRoutePath } from "@/utils";
 import { translateRouteTitle } from "@/lang/utils";
 import LayoutMenuIcon from "./LayoutMenuIcon.vue";
 
@@ -120,9 +119,6 @@ function hasOneShowingChild(children: RouteRecordRaw[] = [], parent: RouteRecord
  * 解析菜单跳转路径
  */
 function resolvePath(routePath: string) {
-  if (isExternal(routePath)) return routePath;
-  if (isExternal(props.basePath)) return props.basePath;
-
-  return path.resolve(props.basePath, routePath);
+  return resolveRoutePath(props.basePath, routePath);
 }
 </script>

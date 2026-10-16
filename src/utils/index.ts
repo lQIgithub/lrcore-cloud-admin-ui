@@ -14,5 +14,8 @@ export { downloadFile } from "./download";
 // 本地存储
 export { Storage } from "./storage";
 
+// 路由
+export { resolveRoutePath } from "./route";
+
 // 本地aes加解密
 export { encryptRequestData, decryptResponseData } from "@/utils/aes";

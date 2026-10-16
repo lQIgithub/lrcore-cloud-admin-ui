@@ -24,12 +24,11 @@
 
 <script lang="ts" setup>
 import { useRoute } from "vue-router";
-import path from "path-browserify";
 import type { MenuInstance } from "element-plus";
 import type { RouteRecordRaw } from "vue-router";
 import { SidebarColor, ThemeMode } from "@/enums/settings";
 import { useSettingsStore, useAppStore } from "@/stores";
-import { isExternal } from "@/utils/index";
+import { resolveRoutePath } from "@/utils";
 import LayoutSidebarItem from "./LayoutSidebarItem.vue";
 import variables from "@/styles/variables.module.scss";
 const props = defineProps({
@@ -95,18 +94,7 @@ const activeMenuPath = computed((): string => {
  * 解析菜单跳转路径
  */
 function resolveFullPath(routePath: string) {
-  if (isExternal(routePath)) {
-    return routePath;
-  }
-  if (isExternal(props.basePath)) {
-    return props.basePath;
-  }
-
-  if (!props.basePath || props.basePath === "") {
-    return routePath;
-  }
-
-  return path.resolve(props.basePath, routePath);
+  return resolveRoutePath(props.basePath, routePath);
 }
 
 /**
