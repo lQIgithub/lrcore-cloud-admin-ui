@@ -41,6 +41,7 @@ beforeAll(() => {
 
 // 每个用例前清空两个 storage（SsoStorage 读写均落在这两个 store 上）
 beforeEach(() => {
+  SsoStorage.clearAll();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -154,6 +155,34 @@ describe("SsoStorage（state / verifier / id_token）", () => {
     SsoStorage.setPending("state-abc", "verifier-xyz", "/");
     expect(SsoStorage.verifyState("state-evil")).toBe(false);
     expect(SsoStorage.getCodeVerifier()).toBe("");
+  });
+
+  it("新标签页丢失 sessionStorage 时使用 localStorage 兜底校验", () => {
+    SsoStorage.setPending("state-tab", "verifier-tab", "/system/user");
+    sessionStorage.clear();
+    expect(SsoStorage.verifyState("state-tab")).toBe(true);
+    expect(SsoStorage.getCodeVerifier()).toBe("verifier-tab");
+    expect(SsoStorage.getRedirect()).toBe("/system/user");
+  });
+
+  it("新标签页丢失所有 Web Storage 时使用 cookie 兜底校验", () => {
+    SsoStorage.setPending("state-cookie", "verifier-cookie", "/dashboard");
+    sessionStorage.clear();
+    localStorage.clear();
+    expect(SsoStorage.verifyState("state-cookie")).toBe(true);
+    expect(SsoStorage.getCodeVerifier()).toBe("verifier-cookie");
+    expect(SsoStorage.getRedirect()).toBe("/dashboard");
+  });
+
+  it("并发 SSO 流程按 state 独立校验，不互相覆盖", () => {
+    SsoStorage.setPending("state-1", "verifier-1", "/one");
+    SsoStorage.setPending("state-2", "verifier-2", "/two");
+    expect(SsoStorage.verifyState("state-2")).toBe(true);
+    expect(SsoStorage.getCodeVerifier()).toBe("verifier-2");
+    expect(SsoStorage.getRedirect()).toBe("/two");
+    expect(SsoStorage.verifyState("state-1")).toBe(true);
+    expect(SsoStorage.getCodeVerifier()).toBe("verifier-1");
+    expect(SsoStorage.getRedirect()).toBe("/one");
   });
 
   it("校验成功后 verifier 保留到 clearPending（换码前可取）", () => {

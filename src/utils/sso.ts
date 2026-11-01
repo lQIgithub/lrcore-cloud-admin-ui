@@ -287,42 +287,115 @@ export async function startSsoSilentReauth(currentPath: string): Promise<boolean
   return true;
 }
 
-/** 记录本次授权流程的 state / verifier / 目标路由（sessionStorage，回调页消费后清除） */
+interface SsoPendingFlow {
+  verifier: string;
+  redirect: string;
+  createdAt: number;
+}
+
+type SsoPendingFlows = Record<string, SsoPendingFlow>;
+
+function readPendingFlows(): SsoPendingFlows {
+  const fromStorage = Storage.get<SsoPendingFlows>(STORAGE_KEYS.SSO_PENDING_COOKIE, {});
+  const rawCookie = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${STORAGE_KEYS.SSO_PENDING_COOKIE}=`))
+    ?.slice(STORAGE_KEYS.SSO_PENDING_COOKIE.length + 1);
+  let fromCookie: SsoPendingFlows = {};
+  if (rawCookie) {
+    try {
+      fromCookie = JSON.parse(decodeURIComponent(rawCookie)) as SsoPendingFlows;
+    } catch {
+      fromCookie = {};
+    }
+  }
+  return { ...fromCookie, ...fromStorage };
+}
+
+function writePendingFlows(flows: SsoPendingFlows): void {
+  Storage.set(STORAGE_KEYS.SSO_PENDING_COOKIE, flows);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie =
+    [
+      `${STORAGE_KEYS.SSO_PENDING_COOKIE}=${encodeURIComponent(JSON.stringify(flows))}`,
+      "Max-Age=600",
+      "Path=/",
+      "SameSite=Lax",
+    ].join("; ") + secure;
+}
+
+function removePendingCookie(): void {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${STORAGE_KEYS.SSO_PENDING_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+  Storage.remove(STORAGE_KEYS.SSO_PENDING_COOKIE);
+}
+
+/**
+ * 记录本次授权流程的 state / verifier / 目标路由。
+ *
+ * sessionStorage 保证同一标签页优先读取；localStorage 和 cookie 兜底保存，
+ * 兼容授权中心通过新标签页回跳时 Web Storage 不可用或为空的场景。
+ */
 export const SsoStorage = {
   setPending(state: string, verifier: string, redirect: string): void {
+    const flows = readPendingFlows();
+    flows[state] = { verifier, redirect, createdAt: Date.now() };
+    writePendingFlows(flows);
     Storage.sessionSet(STORAGE_KEYS.SSO_STATE, state);
     Storage.sessionSet(STORAGE_KEYS.SSO_CODE_VERIFIER, verifier);
     Storage.sessionSet(STORAGE_KEYS.SSO_REDIRECT, redirect);
+    Storage.set(STORAGE_KEYS.SSO_STATE, state);
+    Storage.set(STORAGE_KEYS.SSO_CODE_VERIFIER, verifier);
+    Storage.set(STORAGE_KEYS.SSO_REDIRECT, redirect);
   },
 
   /** 校验并消费 state（一次性）；不匹配返回 false（防重放/CSRF）。
    *  注意：verifier 保留到换码完成后由 {@link clearPending} 清除 */
   verifyState(state: string): boolean {
-    const expected = Storage.sessionGet(STORAGE_KEYS.SSO_STATE, "");
-    Storage.sessionRemove(STORAGE_KEYS.SSO_STATE);
-    if (!expected || expected !== state) {
+    const flows = readPendingFlows();
+    const pending = flows[state];
+    if (!pending) {
       this.clearPending();
       return false;
     }
+    delete flows[state];
+    writePendingFlows(flows);
+    Storage.sessionSet(STORAGE_KEYS.SSO_CODE_VERIFIER, pending.verifier);
+    Storage.sessionSet(STORAGE_KEYS.SSO_REDIRECT, pending.redirect);
+    Storage.sessionRemove(STORAGE_KEYS.SSO_STATE);
     return true;
   },
 
   getCodeVerifier(): string {
-    return Storage.sessionGet(STORAGE_KEYS.SSO_CODE_VERIFIER, "");
+    return (
+      Storage.sessionGet(STORAGE_KEYS.SSO_CODE_VERIFIER, "") ||
+      Storage.get(STORAGE_KEYS.SSO_CODE_VERIFIER, "") ||
+      ""
+    );
   },
 
   getRedirect(): string {
-    return Storage.sessionGet(STORAGE_KEYS.SSO_REDIRECT, "/");
+    return (
+      Storage.sessionGet(STORAGE_KEYS.SSO_REDIRECT, "") ||
+      Storage.get(STORAGE_KEYS.SSO_REDIRECT, "") ||
+      "/"
+    );
   },
 
   clearPending(): void {
+    removePendingCookie();
     Storage.sessionRemove(STORAGE_KEYS.SSO_STATE);
     Storage.sessionRemove(STORAGE_KEYS.SSO_CODE_VERIFIER);
+    Storage.remove(STORAGE_KEYS.SSO_STATE);
+    Storage.remove(STORAGE_KEYS.SSO_CODE_VERIFIER);
+    Storage.remove(STORAGE_KEYS.SSO_REDIRECT);
   },
 
   /** 目标路由（回调页消费后保留到进入系统，登出时一并清理） */
   clearRedirect(): void {
     Storage.sessionRemove(STORAGE_KEYS.SSO_REDIRECT);
+    Storage.remove(STORAGE_KEYS.SSO_REDIRECT);
   },
 
   /** id_token 存取（与访问令牌同一“记住我”语义，供前通道登出 id_token_hint） */
@@ -345,6 +418,7 @@ export const SsoStorage = {
   },
 
   clearAll(): void {
+    removePendingCookie();
     Storage.remove(STORAGE_KEYS.SSO_ID_TOKEN);
     Storage.sessionRemove(STORAGE_KEYS.SSO_ID_TOKEN);
     this.clearPending();

@@ -298,6 +298,7 @@ const dialogState = reactive({
 });
 
 const initialFormData: RoleForm = {
+  dataScope: 1,
   sort: 1,
   status: CommonStatus.ENABLED,
 };

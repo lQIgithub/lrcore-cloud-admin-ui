@@ -34,6 +34,7 @@ export const STORAGE_KEYS = {
   SSO_STATE: `${APP_PREFIX}:sso:state`,
   SSO_CODE_VERIFIER: `${APP_PREFIX}:sso:code_verifier`,
   SSO_REDIRECT: `${APP_PREFIX}:sso:redirect`,
+  SSO_PENDING_COOKIE: `${APP_PREFIX}:sso:pending`,
   SSO_ID_TOKEN: `${APP_PREFIX}:sso:id_token`,
 
   // 租户
