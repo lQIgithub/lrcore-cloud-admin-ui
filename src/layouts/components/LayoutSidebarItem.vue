@@ -109,7 +109,7 @@ function hasOneShowingChild(children: RouteRecordRaw[] = [], parent: RouteRecord
   }
 
   if (showingChildren.length === 0) {
-    onlyOneChild.value = { ...parent, path: "", noShowingChildren: true } as SidebarRoute;
+    onlyOneChild.value = { ...parent, noShowingChildren: true } as SidebarRoute;
     return true;
   }
   return false;

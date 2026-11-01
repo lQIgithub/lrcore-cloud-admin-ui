@@ -129,11 +129,12 @@ const transformRoutes = (routes: RouteItem[], isTopLevel: boolean = true): Route
   return routes.map((route) => {
     const { children, ...args } = route;
     const componentPath = route.component;
+    const routePath = normalizeRoutePath(route.path ?? "", isTopLevel);
 
     // 非顶层目录壳去掉 Layout 组件，仅保留路由结构
     const resolvedComponent = isTopLevel || componentPath !== "Layout" ? componentPath : undefined;
 
-    const normalizedRoute = { ...args } as RouteRecordRaw;
+    const normalizedRoute = { ...args, path: routePath } as RouteRecordRaw;
 
     if (!resolvedComponent) {
       normalizedRoute.component = undefined;
@@ -149,6 +150,14 @@ const transformRoutes = (routes: RouteItem[], isTopLevel: boolean = true): Route
     return normalizedRoute;
   });
 };
+
+/**
+ * 顶级路由必须是绝对路径，否则菜单生成的 /xxx 无法命中注册路由 xxx。
+ */
+function normalizeRoutePath(routePath: string, isTopLevel: boolean): string {
+  if (!routePath || isExternal(routePath)) return routePath;
+  return isTopLevel && !routePath.startsWith("/") ? `/${routePath}` : routePath;
+}
 
 /**
  * 解析组件
