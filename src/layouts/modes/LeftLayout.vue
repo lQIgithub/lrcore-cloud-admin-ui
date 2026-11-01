@@ -7,6 +7,15 @@
     >
       <div :class="{ 'has-logo': showLogo }" class="layout-sidebar__inner">
         <LayoutLogo v-if="showLogo" :collapse="!isSidebarOpen" />
+        <button
+          v-if="isMobile && isSidebarOpen"
+          class="layout-sidebar__close"
+          type="button"
+          aria-label="收起菜单"
+          @click="closeSidebar"
+        >
+          <el-icon><Close /></el-icon>
+        </button>
         <el-scrollbar>
           <LayoutSidebar :data="routes" base-path="" />
         </el-scrollbar>
@@ -37,7 +46,7 @@ import LayoutTagsView from "../components/LayoutTagsView.vue";
 import LayoutMain from "../components/LayoutMain.vue";
 import LayoutSidebar from "../components/LayoutSidebar.vue";
 
-const { showTagsView, showLogo, isSidebarOpen, routes } = useLayout();
+const { showTagsView, showLogo, isMobile, isSidebarOpen, routes, closeSidebar } = useLayout();
 const appStore = useAppStore();
 </script>
 
@@ -73,6 +82,28 @@ const appStore = useAppStore();
 
     :deep(.el-menu) {
       border: none;
+    }
+  }
+
+  &__close {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--menu-text);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+
+    &:hover {
+      color: var(--menu-active-text);
+      background: var(--menu-hover);
     }
   }
 }

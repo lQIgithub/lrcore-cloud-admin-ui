@@ -12,7 +12,7 @@ defineProps({
   isActive: { type: Boolean, required: true },
 });
 
-const emit = defineEmits(["toggleClick"]);
+const emit = defineEmits(["toggle-click"]);
 
 const settingsStore = useSettingsStore();
 const layout = computed(() => settingsStore.layout);
@@ -33,7 +33,7 @@ const hamburgerClass = computed(() => {
 });
 
 function toggleClick() {
-  emit("toggleClick");
+  emit("toggle-click");
 }
 </script>
 
