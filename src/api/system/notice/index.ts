@@ -2,7 +2,7 @@ import request from "@/utils/request";
 import type { NoticeQueryParams, NoticeForm, NoticeItem, NoticeDetail } from "./types.d";
 import type { PageResult } from "@/api/common";
 
-const NOTICE_BASE_URL = "/api/v1/notices";
+const NOTICE_BASE_URL = "/lrcore-system/api/v1/notices";
 
 const NoticeAPI = {
   /** 获取通知公告分页数据 */

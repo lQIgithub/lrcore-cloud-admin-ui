@@ -3,7 +3,7 @@
     <el-input v-model="deptName" class="dept-card__search" placeholder="搜索部门" clearable>
       <template #prefix>
         <el-icon>
-          <Search/>
+          <Search />
         </el-icon>
       </template>
     </el-input>
@@ -12,7 +12,7 @@
       ref="deptTreeRef"
       class="dept-card__tree"
       :data="deptList"
-      :props="{ children: 'children', label: 'nodeName', disabled: '' }"
+      :props="{ children: 'children', label: 'name', disabled: '' }"
       :expand-on-click-node="false"
       :filter-node-method="handleFilter"
       default-expand-all
@@ -23,15 +23,8 @@
 
 <script setup lang="ts">
 import DeptAPI from "@/api/system/dept";
-import type {TreeNodeData} from "element-plus/es/components/tree";
-
-/** 部门树节点数据 */
-interface DeptTreeNode {
-  nodeId: string | number;
-  parentNodeId: string | number;
-  nodeName: string;
-  children?: DeptTreeNode[];
-}
+import type { DeptItem } from "@/api/system/dept";
+import type { TreeNodeData } from "element-plus/es/components/tree";
 
 const props = defineProps({
   modelValue: {
@@ -40,7 +33,7 @@ const props = defineProps({
   },
 });
 
-const deptList = ref<DeptTreeNode[]>();
+const deptList = ref<DeptItem[]>();
 const deptTreeRef = ref();
 const deptName = ref("");
 
@@ -61,17 +54,17 @@ function handleFilter(value: string, data: TreeNodeData): boolean {
   if (!value) {
     return true;
   }
-  return String((data as DeptTreeNode).nodeName ?? "").includes(value);
+  return String((data as DeptItem).name ?? "").includes(value);
 }
 
-function handleNodeClick(data: DeptTreeNode): void {
-  deptId.value = data.nodeId;
+function handleNodeClick(data: DeptItem): void {
+  deptId.value = data.id;
   emits("node-click");
 }
 
 onBeforeMount(() => {
-  DeptAPI.getOptions().then((data) => {
-    deptList.value = data as unknown as DeptTreeNode[];
+  DeptAPI.getList({}).then((data) => {
+    deptList.value = data;
   });
 });
 </script>

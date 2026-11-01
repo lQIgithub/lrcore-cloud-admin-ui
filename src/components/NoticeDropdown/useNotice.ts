@@ -119,6 +119,7 @@ export function useNotice() {
           content: "",
           type: data.type,
           level: "",
+          targetType: 1,
           publishStatus: 1,
           publishTime: data.publishTime,
           isRead: 0,

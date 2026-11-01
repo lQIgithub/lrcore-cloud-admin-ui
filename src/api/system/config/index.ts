@@ -2,7 +2,8 @@ import request from "@/utils/request";
 import type { ConfigQueryParams, ConfigForm, ConfigItem } from "./types.d";
 import type { PageResult } from "@/api/common";
 
-const CONFIG_BASE_URL = "/api/v1/configs";
+const SYSTEM_BASE_PREFIX = "/lrcore-system";
+const CONFIG_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/configs";
 
 const ConfigAPI = {
   /** 获取配置分页数据 */

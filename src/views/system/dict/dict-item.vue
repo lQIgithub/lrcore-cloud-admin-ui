@@ -169,9 +169,11 @@ defineOptions({
 });
 
 const route = useRoute();
+const router = useRouter();
 
 // 当前字典编码，由路由 query 传入。
-const dictCode = ref(String(route.query.dictCode ?? ""));
+const routeDictCode = computed(() => String(route.query.dictCode ?? "").trim());
+const dictCode = ref(routeDictCode.value);
 
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
@@ -199,7 +201,10 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
     dictCode: dictCode.value,
     keywords: "",
   },
-  request: (query) => DictAPI.getDictItemPage(dictCode.value, query),
+  request: (query) =>
+    dictCode.value
+      ? DictAPI.getDictItemPage(dictCode.value, query)
+      : Promise.resolve({ list: [], total: 0 }),
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
@@ -218,6 +223,28 @@ const initialFormData: DictItemForm = {
 };
 
 const formData = reactive<DictItemForm>({ ...initialFormData });
+
+watch(routeDictCode, (value) => {
+  if (!value || value === dictCode.value) return;
+  dictCode.value = value;
+  params.dictCode = value;
+  formData.dictCode = value;
+  handleQuery();
+});
+
+async function ensureDictCode(): Promise<void> {
+  if (routeDictCode.value) return;
+  const page = await DictAPI.getPage({ pageNum: 1, pageSize: 1 });
+  const first = page.list?.[0];
+  if (!first) return;
+  await router.replace({
+    query: {
+      ...route.query,
+      dictCode: first.dictCode,
+      title: `【${first.name}】字典数据`,
+    },
+  });
+}
 
 const rules: FormRules<DictItemForm> = {
   value: [{ required: true, message: "请输入字典值", trigger: "blur" }],
@@ -342,6 +369,7 @@ function handleBatchDelete(): void {
 }
 
 onMounted(() => {
+  ensureDictCode();
   handleQuery();
 });
 </script>

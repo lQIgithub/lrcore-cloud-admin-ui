@@ -10,6 +10,8 @@ export interface MenuQueryParams {
 
 /** 菜单视图对象 */
 export interface MenuItem {
+  /** 所属应用ID */
+  appId?: string;
   /** 子菜单 */
   children?: MenuItem[];
   /** 组件路径 */
@@ -52,6 +54,8 @@ export interface MenuItem {
 
 /** 菜单表单对象 */
 export interface MenuForm {
+  /** 所属应用ID */
+  appId?: string;
   /** 菜单ID */
   id?: string;
   /** 父菜单ID */

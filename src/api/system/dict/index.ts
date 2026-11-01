@@ -10,7 +10,8 @@ import type {
 } from "./types.d";
 import type { OptionItem, PageResult } from "@/api/common";
 
-const DICT_BASE_URL = "/api/v1/dicts";
+const SYSTEM_BASE_PREFIX = "/lrcore-system";
+const DICT_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/dicts";
 
 type DictTagType = DictItemForm["tagType"];
 type DictTagTypeCode = "N" | "P" | "S" | "W" | "I" | "D";
@@ -20,16 +21,21 @@ const decodeDictTagType = (code?: unknown): DictTagType => {
   const val = String(code ?? "")
     .trim()
     .toUpperCase();
-  switch (val as DictTagTypeCode) {
+  switch (val) {
     case "P":
+    case "PRIMARY":
       return "primary";
     case "S":
+    case "SUCCESS":
       return "success";
     case "W":
+    case "WARNING":
       return "warning";
     case "I":
+    case "INFO":
       return "info";
     case "D":
+    case "DANGER":
       return "danger";
     case "N":
     default:

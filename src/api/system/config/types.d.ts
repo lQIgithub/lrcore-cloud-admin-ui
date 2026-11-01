@@ -34,4 +34,6 @@ export interface ConfigItem {
   configKey?: string;
   /** 配置值 */
   configValue?: string;
+  /** 备注 */
+  remark?: string;
 }

@@ -46,6 +46,8 @@ export interface NoticeItem {
   type: number;
   /** 通知等级 */
   level: string;
+  /** 目标类型（1:全部;2:指定用户） */
+  targetType: number;
   /** 发布状态 */
   publishStatus: number;
   /** 是否已读 */

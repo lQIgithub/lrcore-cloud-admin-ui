@@ -20,6 +20,8 @@ export interface DeptItem {
   id?: string;
   /** 部门名称 */
   name?: string;
+  /** 部门编号 */
+  code?: string;
   /** 父部门ID */
   parentId?: string;
   /** 排序 */
