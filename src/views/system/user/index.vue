@@ -56,30 +56,23 @@
       <el-card ref="tableWrapperRef" class="page-content" shadow="never">
         <div class="page-toolbar">
           <div class="page-toolbar__left">
-            <el-button v-hasPerm="['sys:user:create']" type="primary" @click="handleCreateClick">
-              新增
-            </el-button>
-            <el-button
-              v-hasPerm="'sys:user:delete'"
-              type="danger"
-              :disabled="!hasSelection"
-              @click="handleDelete()"
-            >
+            <!--            v-hasPerm="['sys:user:create']"-->
+            <el-button type="primary" @click="handleCreateClick">新增</el-button>
+            <!--     v-hasPerm="'sys:user:delete'"       -->
+            <el-button type="danger" :disabled="!hasSelection" @click="handleDelete()">
               删除
             </el-button>
           </div>
           <div class="page-toolbar__right">
             <el-tooltip content="导入" placement="top">
-              <el-button
-                v-hasPerm="'sys:user:import'"
-                class="page-icon-btn"
-                @click="openImportDialog"
-              >
+              <!--              v-hasPerm="'sys:user:import'"-->
+              <el-button class="page-icon-btn" @click="openImportDialog">
                 <el-icon><Upload /></el-icon>
               </el-button>
             </el-tooltip>
             <el-tooltip content="导出" placement="top">
-              <el-button v-hasPerm="'sys:user:export'" class="page-icon-btn" @click="handleExport">
+              <!--              v-hasPerm="'sys:user:export'"-->
+              <el-button class="page-icon-btn" @click="handleExport">
                 <el-icon><Download /></el-icon>
               </el-button>
             </el-tooltip>
@@ -156,8 +149,8 @@
             <el-table-column label="操作" fixed="right" width="200">
               <template #default="scope">
                 <div>
+                  <!--                    v-hasPerm="'sys:user:update'"-->
                   <el-button
-                    v-hasPerm="'sys:user:update'"
                     type="primary"
                     size="small"
                     link
@@ -165,17 +158,12 @@
                   >
                     编辑
                   </el-button>
-                  <el-button
-                    v-hasPerm="'sys:user:delete'"
-                    type="danger"
-                    size="small"
-                    link
-                    @click="handleDelete(scope.row.id)"
-                  >
+                  <!--                    v-hasPerm="'sys:user:delete'"-->
+                  <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
                     删除
                   </el-button>
+                  <!--                    v-hasPerm="'sys:user:reset-password'"-->
                   <el-button
-                    v-hasPerm="'sys:user:reset-password'"
                     type="primary"
                     size="small"
                     link

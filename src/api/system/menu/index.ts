@@ -259,6 +259,14 @@ const MenuAPI = {
   deleteById(id: string) {
     return request({ url: `${MENU_BASE_URL}/remove/${id}`, method: "delete" });
   },
+  /** 批量更新菜单排序 */
+  updateSort(items: { id: string; sort: number }[]) {
+    return request({
+      url: `${MENU_BASE_URL}/sort`,
+      method: "put",
+      data: { items },
+    });
+  },
 };
 
 export default MenuAPI;

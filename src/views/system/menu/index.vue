@@ -21,9 +21,8 @@
     <el-card ref="tableWrapperRef" class="page-content" shadow="never">
       <div class="page-toolbar">
         <div class="page-toolbar__left">
-          <el-button v-hasPerm="['sys:menu:create']" type="primary" @click="openDialog('0')">
-            新增
-          </el-button>
+          <!--          v-hasPerm="['sys:menu:create']"-->
+          <el-button type="primary" @click="openDialog('0')">新增</el-button>
         </div>
         <div class="page-toolbar__right">
           <el-tooltip content="刷新" placement="top">
@@ -52,6 +51,7 @@
             children: 'children',
             hasChildren: 'hasChildren',
           }"
+          :row-class-name="getMenuRowClassName"
           @row-click="handleRowClick"
         >
           <el-table-column label="菜单名称" min-width="200">
@@ -76,8 +76,8 @@
             <template #default="scope">
               <el-tag v-if="scope.row.type === MenuTypeEnum.CATALOG" type="warning">目录</el-tag>
               <el-tag v-if="scope.row.type === MenuTypeEnum.MENU" type="success">菜单</el-tag>
-              <el-tag v-if="scope.row.type === MenuTypeEnum.EXTERNAL" type="primary">外链</el-tag>
               <el-tag v-if="scope.row.type === MenuTypeEnum.BUTTON" type="danger">按钮</el-tag>
+              <el-tag v-if="scope.row.type === MenuTypeEnum.EXTERNAL" type="primary">外链</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="访问路径" align="left" min-width="180">
@@ -107,11 +107,11 @@
           <el-table-column label="排序" align="center" width="80" prop="sort" />
           <el-table-column fixed="right" align="center" label="操作" width="220">
             <template #default="scope">
+              <!--                v-hasPerm="['sys:menu:create']"-->
               <el-button
                 v-if="
                   scope.row.type === MenuTypeEnum.CATALOG || scope.row.type === MenuTypeEnum.MENU
                 "
-                v-hasPerm="['sys:menu:create']"
                 type="primary"
                 link
                 size="small"
@@ -119,9 +119,8 @@
               >
                 新增
               </el-button>
-
+              <!--                v-hasPerm="['sys:menu:update']"-->
               <el-button
-                v-hasPerm="['sys:menu:update']"
                 type="primary"
                 link
                 size="small"
@@ -129,13 +128,8 @@
               >
                 编辑
               </el-button>
-              <el-button
-                v-hasPerm="['sys:menu:delete']"
-                type="danger"
-                link
-                size="small"
-                @click.stop="handleDelete(scope.row.id)"
-              >
+              <!--                v-hasPerm="['sys:menu:delete']"-->
+              <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
                 删除
               </el-button>
             </template>
@@ -181,8 +175,8 @@
             >
               <el-radio-button :value="MenuTypeEnum.CATALOG">目录</el-radio-button>
               <el-radio-button :value="MenuTypeEnum.MENU">菜单</el-radio-button>
-              <el-radio-button :value="MenuTypeEnum.EXTERNAL">外链</el-radio-button>
               <el-radio-button :value="MenuTypeEnum.BUTTON">按钮</el-radio-button>
+              <el-radio-button :value="MenuTypeEnum.EXTERNAL">外链</el-radio-button>
             </el-radio-group>
             <div class="menu-type-hint">{{ menuTypeHint }}</div>
           </div>
@@ -427,7 +421,14 @@
 
 <script setup lang="ts">
 import { useFullscreen } from "@vueuse/core";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import Sortable, { type MoveEvent } from "sortablejs";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type TreeInstance,
+} from "element-plus";
 import {
   CirclePlusFilled,
   DeleteFilled,
@@ -457,6 +458,7 @@ const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
 const queryFormRef = ref<FormInstance>();
 const menuFormRef = ref<FormInstance>();
+const dataTableRef = ref<TreeInstance>();
 
 const loading = ref(false);
 const list = ref<MenuItem[]>([]);
@@ -466,6 +468,8 @@ const dialogState = reactive({
   title: "新增菜单",
   visible: false,
 });
+
+let menuTableSortable: Sortable | null = null;
 
 const menuOptions = ref<OptionItem[]>([]);
 
@@ -674,8 +678,108 @@ async function fetchData(): Promise<void> {
   loading.value = true;
   try {
     list.value = await MenuAPI.getList(queryParams);
+    await nextTick();
+    initMenuRowDrag();
   } finally {
     loading.value = false;
+  }
+}
+
+function getMenuRowClassName({ row }: { row: MenuItem }): string {
+  return `menu-row-${row.id}`;
+}
+
+function initMenuRowDrag(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const tbody = tableElement?.querySelector<HTMLElement>(".el-table__body tbody");
+  if (!tbody) return;
+
+  menuTableSortable?.destroy();
+  menuTableSortable = Sortable.create(tbody, {
+    animation: 160,
+    draggable: ".el-table__row",
+    onMove: allowMenuRowMove,
+    onEnd: handleMenuRowDrop,
+  });
+}
+
+function getMenuIdFromRow(element?: Element | null): string | undefined {
+  return Array.from(element?.classList ?? [])
+    .find((className) => className.startsWith("menu-row-"))
+    ?.replace("menu-row-", "");
+}
+
+function allowMenuRowMove(event: MoveEvent): boolean {
+  const draggedId = getMenuIdFromRow(event.dragged);
+  const relatedId = getMenuIdFromRow(event.related);
+  if (!draggedId || !relatedId) return false;
+
+  const draggedMenu = findMenuById(list.value, draggedId);
+  const relatedMenu = findMenuById(list.value, relatedId);
+  return draggedMenu?.parentId === relatedMenu?.parentId;
+}
+
+function flattenMenus(menus: MenuItem[], result: MenuItem[] = []): MenuItem[] {
+  menus.forEach((menu) => {
+    result.push(menu);
+    flattenMenus(menu.children ?? [], result);
+  });
+  return result;
+}
+
+function reorderMenusByTableDom(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const rows = Array.from(
+    tableElement?.querySelectorAll(".el-table__body tbody .el-table__row") ?? []
+  );
+  const orderedIds = rows
+    .map((row) => getMenuIdFromRow(row))
+    .filter((id): id is string => Boolean(id));
+  if (!orderedIds.length) return;
+
+  const menuMap = new Map(
+    flattenMenus(list.value)
+      .filter((menu) => menu.id)
+      .map((menu) => [menu.id as string, menu])
+  );
+  const orderedMenusByParent = new Map<string, MenuItem[]>();
+  orderedIds.forEach((id) => {
+    const menu = menuMap.get(id);
+    if (!menu) return;
+
+    const parentId = menu.parentId ?? "0";
+    const menus = orderedMenusByParent.get(parentId) ?? [];
+    menus.push(menu);
+    orderedMenusByParent.set(parentId, menus);
+  });
+
+  const reorder = (items: MenuItem[], parentId: string): MenuItem[] => {
+    const originalIds = new Set(items.map((item) => item.id));
+    const orderedItems = (orderedMenusByParent.get(parentId) ?? []).filter((item) =>
+      item.id ? originalIds.has(item.id) : false
+    );
+
+    orderedItems.forEach((item) => {
+      if (item.children?.length) {
+        item.children = reorder(item.children, item.id as string);
+      }
+    });
+    return orderedItems;
+  };
+
+  list.value = reorder(list.value, "0");
+}
+
+async function handleMenuRowDrop(): Promise<void> {
+  reorderMenusByTableDom();
+  const sortItems = collectSortItems(list.value);
+  if (!sortItems.length) return;
+
+  try {
+    await MenuAPI.updateSort(sortItems);
+    ElMessage.success("排序已保存");
+  } catch {
+    fetchData();
   }
 }
 
@@ -1034,6 +1138,20 @@ function closeDialog(): void {
   resetForm();
 }
 
+function collectSortItems(
+  menus: MenuItem[],
+  sortItems: { id: string; sort: number }[] = []
+): { id: string; sort: number }[] {
+  menus.forEach((menu, index) => {
+    if (menu.id) {
+      sortItems.push({ id: menu.id, sort: index + 1 });
+    }
+
+    collectSortItems(menu.children ?? [], sortItems);
+  });
+  return sortItems;
+}
+
 onMounted(() => {
   fetchData();
 });
@@ -1042,6 +1160,14 @@ onMounted(() => {
 <style scoped>
 .menu-form {
   padding-right: 4px;
+}
+
+.el-table .el-table__row {
+  cursor: grab;
+}
+
+.el-table .el-table__row:active {
+  cursor: grabbing;
 }
 
 .menu-form :deep(.el-form-item__label) {
