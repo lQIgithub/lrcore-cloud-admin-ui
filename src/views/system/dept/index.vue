@@ -2,6 +2,23 @@
   <div class="page-container">
     <el-card class="page-search" shadow="never">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+        <el-form-item label="所属企业" prop="enterpriseId">
+          <el-select
+            v-model="queryParams.enterpriseId"
+            placeholder="请选择企业"
+            filterable
+            style="width: 220px"
+            @change="handleQuery"
+          >
+            <el-option
+              v-for="enterprise in enterpriseOptions"
+              :key="enterprise.value"
+              :label="enterprise.label"
+              :value="enterprise.value"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="关键字" prop="keywords">
           <el-input
             v-model="queryParams.keywords"
@@ -160,6 +177,7 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "elem
 import { Refresh, FullScreen } from "@element-plus/icons-vue";
 
 import DeptAPI from "@/api/system/dept";
+import EnterpriseAPI from "@/api/system/enterprise";
 import type { DeptForm, DeptItem, DeptQueryParams } from "@/api/system/dept";
 import type { OptionItem } from "@/api/common";
 import { useTableSelection } from "@/composables";
@@ -179,6 +197,7 @@ const deptFormRef = ref<FormInstance>();
 const loading = ref(false);
 const list = ref<DeptItem[]>([]);
 const queryParams = reactive<DeptQueryParams>({
+  enterpriseId: undefined,
   keywords: "",
   status: undefined,
 });
@@ -191,8 +210,10 @@ const dialogState = reactive({
 });
 
 const deptOptions = ref<OptionItem[]>([]);
+const enterpriseOptions = ref<OptionItem[]>([]);
 
 const initialFormData: DeptForm = {
+  enterpriseId: undefined,
   status: CommonStatus.ENABLED,
   parentId: "0",
   sort: 1,
@@ -201,6 +222,7 @@ const initialFormData: DeptForm = {
 const formData = reactive<DeptForm>({ ...initialFormData });
 
 const rules: FormRules<DeptForm> = {
+  enterpriseId: [{ required: true, message: "所属企业不能为空", trigger: "change" }],
   parentId: [{ required: true, message: "上级部门不能为空", trigger: "change" }],
   name: [{ required: true, message: "部门名称不能为空", trigger: "blur" }],
   code: [{ required: true, message: "部门编号不能为空", trigger: "blur" }],
@@ -211,6 +233,11 @@ const rules: FormRules<DeptForm> = {
  * 拉取部门列表数据（一次性返回全量树）
  */
 async function fetchData(): Promise<void> {
+  if (!queryParams.enterpriseId) {
+    list.value = [];
+    return;
+  }
+
   loading.value = true;
   try {
     list.value = await DeptAPI.getList(queryParams);
@@ -231,6 +258,7 @@ function handleQuery(): void {
  */
 function handleResetQuery(): void {
   queryFormRef.value?.resetFields();
+  queryParams.enterpriseId = enterpriseOptions.value[0]?.value.toString();
   fetchData();
 }
 
@@ -269,6 +297,7 @@ async function openDialog(parentId?: string, deptId?: string): Promise<void> {
     Object.assign(formData, form);
   } else {
     dialogState.title = "新增部门";
+    formData.enterpriseId = queryParams.enterpriseId;
     formData.parentId = parentId || "0";
   }
 }
@@ -341,7 +370,9 @@ function closeDialog(): void {
   resetForm();
 }
 
-onMounted(() => {
-  fetchData();
+onMounted(async () => {
+  enterpriseOptions.value = await EnterpriseAPI.getOptions();
+  queryParams.enterpriseId = enterpriseOptions.value[0]?.value.toString();
+  await fetchData();
 });
 </script>

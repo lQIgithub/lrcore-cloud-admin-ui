@@ -18,6 +18,40 @@ const SYSTEM_BASE_PREFIX = "/lrcore-system";
 const USER_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/users";
 const USERPERM_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/userperm";
 
+/** SysRoleController 返回的角色对象字段 */
+interface RawRoleInfo {
+  roleCode?: string;
+}
+
+/** LoginUserController 返回的权限对象字段 */
+interface RawPermissionInfo {
+  permissionCode?: string;
+}
+
+/** LoginUserController 返回的登录用户结构 */
+interface RawLoginUser {
+  userId?: string | number;
+  userName?: string;
+  nickName?: string;
+  avatar?: string;
+  roles?: RawRoleInfo[];
+  permissions?: RawPermissionInfo[];
+}
+
+/** 将 LoginUser 对象转换为前端权限模型 */
+function toUserInfo(data: RawLoginUser): UserInfo {
+  return {
+    userId: data.userId === undefined ? undefined : String(data.userId),
+    username: data.userName,
+    nickname: data.nickName,
+    avatar: data.avatar,
+    roles: (data.roles ?? []).map((role) => role.roleCode).filter(Boolean) as string[],
+    perms: (data.permissions ?? [])
+      .map((permission) => permission.permissionCode)
+      .filter(Boolean) as string[],
+  };
+}
+
 const UserAPI = {
   /**
    * 获取当前登录用户信息
@@ -25,10 +59,10 @@ const UserAPI = {
    * @returns 登录用户昵称、头像信息，包括角色和权限
    */
   getInfo() {
-    return request<unknown, UserInfo>({
+    return request<unknown, RawLoginUser>({
       url: `${USERPERM_BASE_URL}/getInfo`,
       method: "get",
-    });
+    }).then((data) => toUserInfo(data ?? {}));
   },
 
   /**

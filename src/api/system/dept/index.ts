@@ -10,6 +10,7 @@ const DEPT_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/depts";
 /** SysDeptController 返回的部门实体字段 */
 interface RawDeptItem {
   id?: string | number;
+  enterpriseId?: string | number;
   deptName?: string;
   deptCode?: string;
   parentId?: string | number;
@@ -38,6 +39,7 @@ function toBackendStatus(status?: number): number {
 function toDeptItem(item: RawDeptItem): DeptItem {
   return {
     id: item.id === undefined ? undefined : String(item.id),
+    enterpriseId: item.enterpriseId === undefined ? undefined : String(item.enterpriseId),
     name: item.deptName,
     code: item.deptCode,
     parentId: item.parentId === undefined ? undefined : String(item.parentId),
@@ -86,6 +88,9 @@ const DeptAPI = {
     return request<unknown, DeptItem[]>({
       url: `${DEPT_BASE_URL}/list`,
       method: "get",
+      params: {
+        enterpriseId: queryParams?.enterpriseId,
+      },
     }).then((items) => {
       const deptItems = (items ?? []).map(toDeptItem);
       const filteredItems = deptItems.filter((item) => {
@@ -122,6 +127,7 @@ const DeptAPI = {
       const deptItem = toDeptItem(item ?? {});
       return {
         id: deptItem.id,
+        enterpriseId: deptItem.enterpriseId,
         name: deptItem.name,
         code: deptItem.code,
         parentId: deptItem.parentId,
@@ -138,6 +144,7 @@ const DeptAPI = {
       data: {
         deptName: data.name,
         deptCode: data.code,
+        enterpriseId: data.enterpriseId,
         parentId: data.parentId,
         sortOrder: data.sort,
         status: toBackendStatus(data.status),
@@ -153,6 +160,7 @@ const DeptAPI = {
         id,
         deptName: data.name,
         deptCode: data.code,
+        enterpriseId: data.enterpriseId,
         parentId: data.parentId,
         sortOrder: data.sort,
         status: toBackendStatus(data.status),

@@ -4,6 +4,8 @@
 
 /** 部门查询参数 */
 export interface DeptQueryParams {
+  /** 企业ID */
+  enterpriseId?: string;
   /** 搜索关键字 */
   keywords?: string;
   /** 状态 */
@@ -18,6 +20,8 @@ export interface DeptItem {
   createTime?: Date;
   /** 部门ID */
   id?: string;
+  /** 企业ID */
+  enterpriseId?: string;
   /** 部门名称 */
   name?: string;
   /** 部门编号 */
@@ -38,6 +42,8 @@ export interface DeptItem {
 export interface DeptForm {
   /** 部门ID */
   id?: string;
+  /** 企业ID */
+  enterpriseId?: string;
   /** 部门名称 */
   name?: string;
   /** 部门编号 */
