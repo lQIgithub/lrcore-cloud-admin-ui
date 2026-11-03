@@ -3,6 +3,10 @@ import type { DeptForm, DeptItem, DeptQueryParams } from "./types.d";
 import type { OptionItem } from "@/api/common";
 import { CommonStatus } from "@/enums";
 
+export type DeptOption = OptionItem & {
+  code: string;
+};
+
 const SYSTEM_BASE_PREFIX = "/lrcore-system";
 
 const DEPT_BASE_URL = SYSTEM_BASE_PREFIX + "/api/v1/depts";
@@ -22,6 +26,7 @@ interface RawDeptItem {
 interface RawDeptOptionNode {
   nodeId?: string | number;
   nodeName?: string;
+  code?: string;
   children?: RawDeptOptionNode[];
 }
 
@@ -74,10 +79,11 @@ function buildDeptTree(deptItems: DeptItem[]): DeptItem[] {
   return sortTree(roots);
 }
 
-function toOptionItem(node: RawDeptOptionNode): OptionItem {
+function toOptionItem(node: RawDeptOptionNode): DeptOption {
   return {
     value: String(node.nodeId),
     label: node.nodeName ?? "",
+    code: node.code ?? "",
     children: node.children?.map(toOptionItem),
   };
 }

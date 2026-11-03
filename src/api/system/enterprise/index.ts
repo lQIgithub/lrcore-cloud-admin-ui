@@ -2,6 +2,11 @@ import request from "@/utils/request";
 import type { EnterpriseForm, EnterpriseItem, EnterpriseQueryParams } from "./types.d";
 import type { OptionItem, PageResult } from "@/api/common";
 
+export type EnterpriseOption = OptionItem & {
+  code: string;
+  abbreviation?: string;
+};
+
 const ENTERPRISE_BASE_URL = "/lrcore-system/api/v1/enterprises";
 
 const EnterpriseAPI = {
@@ -13,7 +18,7 @@ const EnterpriseAPI = {
     });
   },
   getOptions() {
-    return request<unknown, OptionItem[]>({
+    return request<unknown, EnterpriseOption[]>({
       url: `${ENTERPRISE_BASE_URL}/options`,
       method: "get",
     });

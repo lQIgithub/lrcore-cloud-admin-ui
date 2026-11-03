@@ -62,6 +62,14 @@ const RoleAPI = {
   deleteByIds(ids: string) {
     return request({ url: SYSTEM_BASE_PREFIX + `${ROLE_BASE_URL}/${ids}`, method: "delete" });
   },
+  /** 批量更新角色排序 */
+  updateSort(items: { id: string; sort: number }[]) {
+    return request({
+      url: SYSTEM_BASE_PREFIX + `${ROLE_BASE_URL}/sort`,
+      method: "put",
+      data: { items },
+    });
+  },
 };
 
 export default RoleAPI;

@@ -25,7 +25,28 @@
         node-key="value"
         :filter-node-method="handleFilter"
         @node-click="handleNodeClick"
-      />
+      >
+        <template #default="{ data }">
+          <el-tooltip
+            v-if="(data as SidebarNode).nodeType === 'enterprise'"
+            placement="right"
+            :show-after="300"
+            :hide-after="0"
+            :content="getEnterpriseTooltip(data as EnterpriseSidebarNode)"
+          >
+            <span>{{ data.label }}</span>
+          </el-tooltip>
+          <el-tooltip
+            v-else
+            placement="right"
+            :show-after="300"
+            :hide-after="0"
+            :content="`编码：${(data as SidebarNode).code || '未设置'}`"
+          >
+            <span>{{ data.label }}</span>
+          </el-tooltip>
+        </template>
+      </el-tree>
     </div>
   </el-card>
 </template>
@@ -38,7 +59,12 @@ import type { TreeNodeData } from "element-plus";
 
 const emits = defineEmits(["node-click"]);
 
-type SidebarNode = OptionItem & {
+type EnterpriseSidebarNode = OptionItem & {
+  code: string;
+  abbreviation?: string;
+};
+
+type SidebarNode = EnterpriseSidebarNode & {
   nodeType: "enterprise" | "dept";
   parentId?: string;
 };
@@ -69,19 +95,33 @@ function handleNodeClick(data: SidebarNode): void {
   });
 }
 
+function getEnterpriseTooltip(enterprise: EnterpriseSidebarNode): string {
+  const lines = [`编码：${enterprise.code}`];
+  if (enterprise.abbreviation) {
+    lines.push(`简称：${enterprise.abbreviation}`);
+  }
+  return lines.join("\n");
+}
+
 async function loadSidebarTree(): Promise<void> {
   loading.value = true;
   try {
-    const enterprises = await EnterpriseAPI.getOptions();
+    const enterprises = await EnterpriseAPI.getPage({
+      pageNum: 1,
+      pageSize: 100,
+    });
     sidebarTreeData.value = await Promise.all(
-      enterprises.map(async (enterprise) => {
-        const departments = await DeptAPI.getOptions(enterprise.value?.toString());
+      enterprises.list.map(async (enterprise) => {
+        const departments = await DeptAPI.getOptions(enterprise.id);
         return {
-          ...enterprise,
+          value: enterprise.id,
+          label: enterprise.name,
+          code: enterprise.code,
+          abbreviation: enterprise.abbreviation,
           nodeType: "enterprise" as const,
           children: departments.map((department) => ({
             ...department,
-            parentId: enterprise.value?.toString(),
+            parentId: enterprise.id,
             nodeType: "dept" as const,
           })),
         };

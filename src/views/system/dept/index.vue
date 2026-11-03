@@ -21,7 +21,18 @@
               highlight-current
               node-key="value"
               @node-click="handleEnterpriseNodeClick"
-            />
+            >
+              <template #default="{ data }">
+                <el-tooltip
+                  placement="right"
+                  :show-after="300"
+                  :hide-after="0"
+                  :content="getEnterpriseTooltip(data as EnterpriseOption)"
+                >
+                  <span>{{ data.label }}</span>
+                </el-tooltip>
+              </template>
+            </el-tree>
           </div>
         </el-card>
       </div>
@@ -211,6 +222,7 @@ import { Refresh, FullScreen, ArrowLeft, ArrowRight, Search } from "@element-plu
 import DeptAPI from "@/api/system/dept";
 import EnterpriseAPI from "@/api/system/enterprise";
 import type { DeptForm, DeptItem, DeptQueryParams } from "@/api/system/dept";
+import type { EnterpriseOption } from "@/api/system/enterprise";
 import type { OptionItem } from "@/api/common";
 import { useTableSelection } from "@/composables";
 import { CommonStatus } from "@/enums";
@@ -244,12 +256,20 @@ const dialogState = reactive({
 });
 
 const deptOptions = ref<OptionItem[]>([]);
-const enterpriseOptions = ref<OptionItem[]>([]);
+const enterpriseOptions = ref<EnterpriseOption[]>([]);
 const enterpriseTreeRef = ref<InstanceType<typeof ElTree>>();
 const enterpriseKeyword = ref("");
 
 function filterEnterpriseNode(value: string, data: { label?: string }): boolean {
   return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+function getEnterpriseTooltip(enterprise: EnterpriseOption): string {
+  const lines = [`编码：${enterprise.code}`];
+  if (enterprise.abbreviation) {
+    lines.push(`简称：${enterprise.abbreviation}`);
+  }
+  return lines.join("\n");
 }
 
 watch(enterpriseKeyword, (keyword) => enterpriseTreeRef.value?.filter(keyword));
@@ -545,7 +565,13 @@ function collectSortItems(
 }
 
 onMounted(async () => {
-  enterpriseOptions.value = await EnterpriseAPI.getOptions();
+  const enterprises = await EnterpriseAPI.getPage({ pageNum: 1, pageSize: 100 });
+  enterpriseOptions.value = enterprises.list.map((enterprise) => ({
+    value: enterprise.id,
+    label: enterprise.name,
+    code: enterprise.code,
+    abbreviation: enterprise.abbreviation,
+  }));
   queryParams.enterpriseId = enterpriseOptions.value[0]?.value?.toString();
   await fetchData();
 });

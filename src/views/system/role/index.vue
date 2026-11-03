@@ -49,6 +49,7 @@
           height="100%"
           highlight-current-row
           border
+          :row-class-name="getRoleRowClassName"
           @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" align="center" />
@@ -232,11 +233,13 @@
 
 <script setup lang="ts">
 import { useFullscreen } from "@vueuse/core";
+import Sortable, { type SortableEvent } from "sortablejs";
 import {
   ElMessage,
   ElMessageBox,
   type FormInstance,
   type FormRules,
+  type TableInstance,
   type TreeInstance,
   type TreeNodeData,
 } from "element-plus";
@@ -262,8 +265,10 @@ const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
 const queryFormRef = ref<FormInstance>();
+const dataTableRef = ref<TableInstance>();
 const roleFormRef = ref<FormInstance>();
 const permTreeRef = ref<TreeInstance>();
+let roleTableSortable: Sortable | null = null;
 
 // 自定义数据权限取值
 const DATA_SCOPE_CUSTOM = 5;
@@ -561,5 +566,65 @@ watch(permKeywords, (value) => {
 
 onMounted(() => {
   handleQuery();
+  initRoleRowDrag();
 });
+
+onBeforeUnmount(() => {
+  roleTableSortable?.destroy();
+});
+
+function getRoleRowClassName({ row }: { row: RoleItem }): string {
+  return `role-row-${row.id}`;
+}
+
+function initRoleRowDrag(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const tbody = tableElement?.querySelector<HTMLElement>(".el-table__body tbody");
+  if (!tbody) return;
+
+  roleTableSortable?.destroy();
+  roleTableSortable = Sortable.create(tbody, {
+    animation: 160,
+    draggable: ".el-table__row",
+    onEnd: handleRoleRowDrop,
+  });
+}
+
+async function handleRoleRowDrop(event: SortableEvent): Promise<void> {
+  const oldIndex = event.oldIndex;
+  const newIndex = event.newIndex;
+  if (oldIndex === undefined || newIndex === undefined) return;
+  if (oldIndex === newIndex || oldIndex >= list.value.length || newIndex >= list.value.length)
+    return;
+
+  const reorderedList = [...list.value];
+  const [draggedItem] = reorderedList.splice(oldIndex, 1);
+  reorderedList.splice(newIndex, 0, draggedItem);
+  list.value = reorderedList;
+
+  const sortBase = (params.pageNum - 1) * params.pageSize;
+  const sortItems = reorderedList
+    .filter((item): item is RoleItem & { id: string } => Boolean(item.id))
+    .map((item, index) => ({
+      id: item.id,
+      sort: sortBase + index + 1,
+    }));
+
+  try {
+    await RoleAPI.updateSort(sortItems);
+    ElMessage.success("排序已保存");
+  } catch {
+    handleQuery();
+  }
+}
 </script>
+
+<style scoped>
+.el-table .el-table__row {
+  cursor: grab;
+}
+
+.el-table .el-table__row:active {
+  cursor: grabbing;
+}
+</style>

@@ -21,7 +21,18 @@
               highlight-current
               node-key="value"
               @node-click="handleTenantNodeClick"
-            />
+            >
+              <template #default="{ data }">
+                <el-tooltip
+                  placement="right"
+                  :show-after="300"
+                  :hide-after="0"
+                  :content="getTenantTooltip(data as TenantOption)"
+                >
+                  <span>{{ data.label }}</span>
+                </el-tooltip>
+              </template>
+            </el-tree>
           </div>
         </el-card>
       </div>
@@ -245,12 +256,25 @@ defineOptions({
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 const sidebarCollapsed = ref(false);
-const tenantOptions = ref<OptionItem[]>([]);
+type TenantOption = OptionItem & {
+  code: string;
+  description?: string;
+};
+
+const tenantOptions = ref<TenantOption[]>([]);
 const tenantTreeRef = ref<InstanceType<typeof ElTree>>();
 const tenantKeyword = ref("");
 
 function filterTenantNode(value: string, data: { label?: string }): boolean {
   return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+function getTenantTooltip(tenant: TenantOption): string {
+  const lines = [`编码：${tenant.code}`];
+  if (tenant.description) {
+    lines.push(`描述：${tenant.description}`);
+  }
+  return lines.join("\n");
 }
 
 watch(tenantKeyword, (keyword) => tenantTreeRef.value?.filter(keyword));
@@ -407,6 +431,8 @@ onMounted(async () => {
   tenantOptions.value = tenants.list.map((tenant) => ({
     value: tenant.id,
     label: tenant.name,
+    code: tenant.code,
+    description: tenant.description,
   }));
   params.tenantId = tenantOptions.value[0]?.value?.toString();
   await fetchData();
