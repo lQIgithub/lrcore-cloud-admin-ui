@@ -1,93 +1,141 @@
 ﻿<template>
-  <div class="page-container">
-    <el-card ref="tableWrapperRef" class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="params" :inline="true">
-        <el-form-item label="关键字" prop="keywords">
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="dict-card" shadow="never">
           <el-input
-            v-model="params.keywords"
-            placeholder="字典标签/字典值"
+            v-model="dictKeyword"
+            class="dict-card__search"
+            placeholder="搜索字典"
             clearable
-            @keyup.enter="handleQuery"
+            :prefix-icon="Search"
           />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">搜索</el-button>
-          <el-button @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <el-button type="primary" @click="handleCreateClick()">新增</el-button>
-          <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
-            删除
-          </el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="fetchData">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
+          <div class="dict-card__body">
+            <el-tree
+              ref="dictTreeRef"
+              :data="dictOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              :filter-node-method="filterDictNode"
+              highlight-current
+              node-key="value"
+              @node-click="handleDictNodeClick"
+            >
+              <template #default="{ data }">
+                <el-tooltip
+                  placement="right"
+                  :show-after="300"
+                  :hide-after="0"
+                  :content="getDictTooltip(data as DictOption)"
+                >
+                  <span>{{ data.label }}</span>
+                </el-tooltip>
+              </template>
+            </el-tree>
+          </div>
+        </el-card>
       </div>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
 
-      <div class="page-table-wrapper">
-        <el-table
-          v-loading="loading"
-          highlight-current-row
-          :data="list"
-          class="page-table"
-          border
-          height="100%"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column label="字典项标签" prop="label" />
-          <el-table-column label="字典项值" prop="value" />
-          <el-table-column label="排序" prop="sort" />
-          <el-table-column label="状态">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
-                {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
-              </el-tag>
-            </template>
-          </el-table-column>
+    <div class="page-main">
+      <el-card ref="tableWrapperRef" class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="params" :inline="true">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="params.keywords"
+              placeholder="字典标签/字典值"
+              clearable
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
 
-          <el-table-column fixed="right" label="操作" align="center" width="220">
-            <template #default="scope">
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click.stop="handleEditClick(scope.row as DictItem)"
-              >
-                编辑
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">搜索</el-button>
+            <el-button @click="handleResetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <el-button type="primary" @click="handleCreateClick()">新增</el-button>
+            <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
+              删除
+            </el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="fetchData">
+                <el-icon><Refresh /></el-icon>
               </el-button>
-              <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-                删除
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
+            </el-tooltip>
+          </div>
+        </div>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="params.pageNum"
-        v-model:limit="params.pageSize"
-        @pagination="fetchData"
-      />
-    </el-card>
+        <div class="page-table-wrapper">
+          <el-table
+            ref="dataTableRef"
+            v-loading="loading"
+            highlight-current-row
+            :data="list"
+            :row-class-name="getRowClassName"
+            class="page-table"
+            border
+            height="100%"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column label="字典项标签" prop="label" />
+            <el-table-column label="字典项值" prop="value" />
+            <el-table-column label="排序" prop="sort" />
+            <el-table-column label="状态">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
+                  {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column fixed="right" label="操作" align="center" width="220">
+              <template #default="scope">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="handleEditClick(scope.row as DictItem)"
+                >
+                  编辑
+                </el-button>
+                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="params.pageNum"
+          v-model:limit="params.pageSize"
+          @pagination="fetchData"
+        />
+      </el-card>
+    </div>
 
     <el-dialog
       v-model="dialogState.visible"
@@ -155,10 +203,26 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { FullScreen, QuestionFilled, Refresh } from "@element-plus/icons-vue";
+import Sortable, { type SortableEvent } from "sortablejs";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type TableInstance,
+  type ElTree,
+} from "element-plus";
+import {
+  ArrowLeft,
+  ArrowRight,
+  FullScreen,
+  QuestionFilled,
+  Refresh,
+  Search,
+} from "@element-plus/icons-vue";
 
 import DictAPI from "@/api/system/dict";
+import type { OptionItem } from "@/api/common";
 import type { DictItem, DictItemForm, DictItemQueryParams } from "@/api/system/dict";
 import { usePageTable, useTableSelection } from "@/composables";
 import { CommonStatus } from "@/enums";
@@ -175,11 +239,22 @@ const router = useRouter();
 const routeDictCode = computed(() => String(route.query.dictCode ?? "").trim());
 const dictCode = ref(routeDictCode.value);
 
+type DictOption = OptionItem & {
+  code: string;
+};
+
+const dictOptions = ref<DictOption[]>([]);
+const dictTreeRef = ref<InstanceType<typeof ElTree>>();
+const dictKeyword = ref("");
+const sidebarCollapsed = ref(false);
+
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
+const dataTableRef = ref<TableInstance>();
 const queryFormRef = ref<FormInstance>();
 const dictItemFormRef = ref<FormInstance>();
+let dictItemTableSortable: Sortable | null = null;
 
 // 标签类型可选项。
 const tagTypeOptions: NonNullable<DictItemForm["tagType"]>[] = [
@@ -230,7 +305,38 @@ watch(routeDictCode, (value) => {
   params.dictCode = value;
   formData.dictCode = value;
   handleQuery();
+  nextTick(() => dictTreeRef.value?.setCurrentKey(value));
 });
+
+function filterDictNode(value: string, data: { label?: string }): boolean {
+  return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+function getDictTooltip(dict: DictOption): string {
+  return `编码：${dict.code}`;
+}
+
+watch(dictKeyword, (keyword) => dictTreeRef.value?.filter(keyword));
+
+async function handleDictNodeClick(node: DictOption): Promise<void> {
+  if (node.value == null || node.value === dictCode.value) return;
+  await router.replace({
+    query: {
+      ...route.query,
+      dictCode: node.value.toString(),
+    },
+  });
+}
+
+async function loadDictOptions(): Promise<void> {
+  const page = await DictAPI.getPage({ pageNum: 1, pageSize: 1000 });
+  dictOptions.value = (page.list ?? []).map((item) => ({
+    value: item.dictCode,
+    label: item.name,
+    code: item.dictCode,
+  }));
+  nextTick(() => dictTreeRef.value?.setCurrentKey(dictCode.value));
+}
 
 async function ensureDictCode(): Promise<void> {
   if (routeDictCode.value) return;
@@ -370,6 +476,113 @@ function handleBatchDelete(): void {
 
 onMounted(() => {
   ensureDictCode();
+  loadDictOptions();
   handleQuery();
+  initDictItemRowDrag();
 });
+
+onBeforeUnmount(() => {
+  dictItemTableSortable?.destroy();
+});
+
+function getRowClassName({ row }: { row: DictItem }): string {
+  return `dict-item-row-${row.id}`;
+}
+
+function initDictItemRowDrag(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const tbody = tableElement?.querySelector<HTMLElement>(".el-table__body tbody");
+  if (!tbody) return;
+
+  dictItemTableSortable?.destroy();
+  dictItemTableSortable = Sortable.create(tbody, {
+    animation: 160,
+    draggable: ".el-table__row",
+    onEnd: handleDictItemRowDrop,
+  });
+}
+
+async function handleDictItemRowDrop(event: SortableEvent): Promise<void> {
+  const oldIndex = event.oldIndex;
+  const newIndex = event.newIndex;
+  if (oldIndex === undefined || newIndex === undefined) return;
+  if (oldIndex === newIndex || oldIndex >= list.value.length || newIndex >= list.value.length) {
+    return;
+  }
+
+  const reorderedList = [...list.value];
+  const [draggedItem] = reorderedList.splice(oldIndex, 1);
+  reorderedList.splice(newIndex, 0, draggedItem);
+  list.value = reorderedList;
+
+  const sortBase = (params.pageNum - 1) * params.pageSize;
+  const sortItems = reorderedList
+    .filter((item): item is DictItem & { id: string } => Boolean(item.id))
+    .map((item, index) => ({
+      id: item.id,
+      sort: sortBase + index + 1,
+    }));
+
+  try {
+    await DictAPI.updateDictItemSort(dictCode.value, sortItems);
+    ElMessage.success("排序已保存");
+  } catch {
+    handleQuery();
+  }
+}
 </script>
+
+<style lang="scss" scoped>
+.dict-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__search {
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
+  }
+}
+</style>
+
+<style scoped>
+.el-table .el-table__row {
+  cursor: grab;
+}
+
+.el-table .el-table__row:active {
+  cursor: grabbing;
+}
+</style>

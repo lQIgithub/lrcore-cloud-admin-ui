@@ -158,6 +158,14 @@ const DictAPI = {
   deleteDictItems(dictCode: string, ids: string) {
     return request({ url: `${DICT_BASE_URL}/${dictCode}/items/${ids}`, method: "delete" });
   },
+  /** 批量更新字典项排序 */
+  updateDictItemSort(dictCode: string, items: { id: string; sort: number }[]) {
+    return request({
+      url: `${DICT_BASE_URL}/${dictCode}/items/sort`,
+      method: "put",
+      data: { items },
+    });
+  },
 };
 
 export default DictAPI;
