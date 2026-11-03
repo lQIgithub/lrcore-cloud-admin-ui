@@ -43,6 +43,7 @@
       <div class="page-table-wrapper">
         <el-table
           ref="dataTableRef"
+          :key="roleTableKey"
           v-loading="loading"
           class="page-table"
           :data="list"
@@ -269,6 +270,7 @@ const dataTableRef = ref<TableInstance>();
 const roleFormRef = ref<FormInstance>();
 const permTreeRef = ref<TreeInstance>();
 let roleTableSortable: Sortable | null = null;
+const roleTableKey = ref(0);
 
 // 自定义数据权限取值
 const DATA_SCOPE_CUSTOM = 5;
@@ -612,10 +614,18 @@ async function handleRoleRowDrop(event: SortableEvent): Promise<void> {
 
   try {
     await RoleAPI.updateSort(sortItems);
+    await refreshRoleTable();
     ElMessage.success("排序已保存");
   } catch {
-    handleQuery();
+    await refreshRoleTable();
   }
+}
+
+async function refreshRoleTable(): Promise<void> {
+  roleTableKey.value++;
+  await fetchData();
+  await nextTick();
+  initRoleRowDrag();
 }
 </script>
 

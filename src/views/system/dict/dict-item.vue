@@ -88,6 +88,7 @@
         <div class="page-table-wrapper">
           <el-table
             ref="dataTableRef"
+            :key="dictItemTableKey"
             v-loading="loading"
             highlight-current-row
             :data="list"
@@ -255,6 +256,7 @@ const dataTableRef = ref<TableInstance>();
 const queryFormRef = ref<FormInstance>();
 const dictItemFormRef = ref<FormInstance>();
 let dictItemTableSortable: Sortable | null = null;
+const dictItemTableKey = ref(0);
 
 // 标签类型可选项。
 const tagTypeOptions: NonNullable<DictItemForm["tagType"]>[] = [
@@ -525,10 +527,18 @@ async function handleDictItemRowDrop(event: SortableEvent): Promise<void> {
 
   try {
     await DictAPI.updateDictItemSort(dictCode.value, sortItems);
+    await refreshDictItemTable();
     ElMessage.success("排序已保存");
   } catch {
-    handleQuery();
+    await refreshDictItemTable();
   }
+}
+
+async function refreshDictItemTable(): Promise<void> {
+  dictItemTableKey.value++;
+  await fetchData();
+  await nextTick();
+  initDictItemRowDrag();
 }
 </script>
 

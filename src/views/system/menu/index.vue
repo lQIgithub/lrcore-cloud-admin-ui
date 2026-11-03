@@ -41,6 +41,7 @@
       <div class="page-table-wrapper">
         <el-table
           ref="dataTableRef"
+          :key="menuTableKey"
           v-loading="loading"
           class="page-table"
           border
@@ -463,6 +464,7 @@ const dataTableRef = ref<TreeInstance>();
 
 const loading = ref(false);
 const list = ref<MenuItem[]>([]);
+const menuTableKey = ref(0);
 const queryParams = reactive<MenuQueryParams>({ keywords: "" });
 
 const dialogState = reactive({
@@ -686,6 +688,11 @@ async function fetchData(): Promise<void> {
   }
 }
 
+async function refreshMenuTable(): Promise<void> {
+  menuTableKey.value++;
+  await fetchData();
+}
+
 function getMenuRowClassName({ row }: { row: MenuItem }): string {
   return `menu-row-${row.id}`;
 }
@@ -778,9 +785,10 @@ async function handleMenuRowDrop(): Promise<void> {
 
   try {
     await MenuAPI.updateSort(sortItems);
+    await refreshMenuTable();
     showApiNotification("排序已保存", "success");
   } catch {
-    fetchData();
+    await refreshMenuTable();
   }
 }
 

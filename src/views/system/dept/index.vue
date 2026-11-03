@@ -107,6 +107,7 @@
         <div class="page-table-wrapper">
           <el-table
             ref="dataTableRef"
+            :key="deptTableKey"
             v-loading="loading"
             :data="list"
             class="page-table"
@@ -242,6 +243,7 @@ const dataTableRef = ref<TreeInstance>();
 
 const loading = ref(false);
 const list = ref<DeptItem[]>([]);
+const deptTableKey = ref(0);
 const queryParams = reactive<DeptQueryParams>({
   enterpriseId: undefined,
   keywords: "",
@@ -316,6 +318,11 @@ async function fetchData(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+async function refreshDeptTable(): Promise<void> {
+  deptTableKey.value++;
+  await fetchData();
 }
 
 function getDeptRowClassName({ row }: { row: DeptItem }): string {
@@ -420,9 +427,10 @@ async function handleDeptRowDrop(): Promise<void> {
 
   try {
     await DeptAPI.updateSort(sortItems);
+    await refreshDeptTable();
     ElMessage.success("排序已保存");
   } catch {
-    fetchData();
+    await refreshDeptTable();
   }
 }
 
