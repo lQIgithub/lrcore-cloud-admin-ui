@@ -1,12 +1,12 @@
 <template>
   <el-card shadow="never" class="enterprise-card">
-    <div class="enterprise-card__header">
-      <h3>企业列表</h3>
-      <p>选择企业后查看用户信息</p>
-    </div>
-    <el-divider class="enterprise-card__divider" />
     <div class="enterprise-card__body">
-      <el-input v-model="keyword" class="enterprise-card__search" placeholder="搜索企业" clearable>
+      <el-input
+        v-model="keyword"
+        class="enterprise-card__search"
+        placeholder="搜索企业/部门"
+        clearable
+      >
         <template #prefix>
           <el-icon>
             <Search />
@@ -16,12 +16,13 @@
 
       <el-tree
         ref="enterpriseTreeRef"
-        :data="enterpriseList"
-        :props="{ label: 'name', children: 'children' }"
+        v-loading="loading"
+        :data="sidebarTreeData"
+        :props="{ label: 'label', children: 'children' }"
         default-expand-all
         :expand-on-click-node="false"
         highlight-current
-        node-key="id"
+        node-key="value"
         :filter-node-method="handleFilter"
         @node-click="handleNodeClick"
       />
@@ -31,12 +32,19 @@
 
 <script setup lang="ts">
 import EnterpriseAPI from "@/api/system/enterprise";
+import DeptAPI from "@/api/system/dept";
 import type { OptionItem } from "@/api/common";
-import type { TreeNodeData } from "element-plus/es/components/tree";
+import type { TreeNodeData } from "element-plus";
 
 const emits = defineEmits(["node-click"]);
 
-const enterpriseList = ref<OptionItem[]>([]);
+type SidebarNode = OptionItem & {
+  nodeType: "enterprise" | "dept";
+  parentId?: string;
+};
+
+const loading = ref(false);
+const sidebarTreeData = ref<SidebarNode[]>([]);
 const enterpriseTreeRef = ref();
 const keyword = ref("");
 
@@ -48,16 +56,43 @@ function handleFilter(value: string, data: TreeNodeData): boolean {
   if (!value) {
     return true;
   }
-  return String((data as OptionItem).label ?? "").includes(value);
+  return String((data as SidebarNode).label ?? "")
+    .toLowerCase()
+    .includes(value.trim().toLowerCase());
 }
 
-function handleNodeClick(data: OptionItem): void {
-  emits("node-click", { id: String(data.value) });
+function handleNodeClick(data: SidebarNode): void {
+  emits("node-click", {
+    id: String(data.value),
+    type: data.nodeType,
+    parentId: data.nodeType === "dept" ? data.parentId : undefined,
+  });
 }
 
-onBeforeMount(async () => {
-  enterpriseList.value = await EnterpriseAPI.getOptions();
-});
+async function loadSidebarTree(): Promise<void> {
+  loading.value = true;
+  try {
+    const enterprises = await EnterpriseAPI.getOptions();
+    sidebarTreeData.value = await Promise.all(
+      enterprises.map(async (enterprise) => {
+        const departments = await DeptAPI.getOptions(enterprise.value?.toString());
+        return {
+          ...enterprise,
+          nodeType: "enterprise" as const,
+          children: departments.map((department) => ({
+            ...department,
+            parentId: enterprise.value?.toString(),
+            nodeType: "dept" as const,
+          })),
+        };
+      })
+    );
+  } finally {
+    loading.value = false;
+  }
+}
+
+onBeforeMount(loadSidebarTree);
 </script>
 
 <style lang="scss" scoped>
@@ -76,28 +111,6 @@ onBeforeMount(async () => {
     padding: 12px;
   }
 
-  &__header {
-    flex-shrink: 0;
-    padding: 10px 12px;
-    background: var(--el-color-primary-light-9);
-    border-radius: 10px;
-
-    h3 {
-      margin: 0;
-      font-size: 15px;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      color: var(--el-text-color-secondary);
-    }
-  }
-
-  &__divider {
-    margin: 10px 0;
-  }
-
   &__body {
     flex: 1 1 auto;
     min-height: 0;
@@ -109,7 +122,20 @@ onBeforeMount(async () => {
   }
 
   :deep(.el-tree-node__content) {
-    height: 32px;
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
   }
 }
 </style>

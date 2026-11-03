@@ -3,7 +3,7 @@
   <div class="page-container page-container--split user-page">
     <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
       <div class="page-aside__inner">
-        <UserEnterpriseTree @node-click="handleEnterpriseNodeClick" />
+        <UserEnterpriseTree @node-click="handleSidebarNodeClick" />
       </div>
       <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
         <el-icon :size="14">
@@ -363,9 +363,19 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
 
 const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<UserItem>();
 
-async function handleEnterpriseNodeClick(node: { id?: string }): Promise<void> {
+async function handleSidebarNodeClick(node: {
+  id?: string;
+  type?: "enterprise" | "dept";
+  parentId?: string;
+}): Promise<void> {
   if (!node.id) return;
-  params.enterpriseId = node.id;
+  if (node.type === "dept") {
+    params.deptId = node.id;
+    params.enterpriseId = node.parentId;
+  } else {
+    params.deptId = undefined;
+    params.enterpriseId = node.id;
+  }
   await handleQuery();
 }
 

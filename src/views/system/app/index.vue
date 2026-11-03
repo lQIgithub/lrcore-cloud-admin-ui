@@ -3,17 +3,21 @@
     <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
       <div class="page-aside__inner">
         <el-card class="tenant-card" shadow="never">
-          <div class="tenant-card__header">
-            <h3>租户列表</h3>
-            <p>选择租户后查看其下应用</p>
-          </div>
-          <el-divider class="tenant-card__divider" />
+          <el-input
+            v-model="tenantKeyword"
+            class="tenant-card__search"
+            placeholder="搜索租户"
+            clearable
+            :prefix-icon="Search"
+          />
           <div class="tenant-card__body">
             <el-tree
+              ref="tenantTreeRef"
               :data="tenantOptions"
               :props="{ label: 'label', children: 'children' }"
               default-expand-all
               :expand-on-click-node="false"
+              :filter-node-method="filterTenantNode"
               highlight-current
               node-key="value"
               @node-click="handleTenantNodeClick"
@@ -169,10 +173,11 @@
 
 <script setup lang="ts">
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
+import { ArrowLeft, ArrowRight, Search } from "@element-plus/icons-vue";
 
 import AppAPI from "@/api/system/app";
 import type { AppForm, AppItem, AppQueryParams } from "@/api/system/app";
+import type { ElTree } from "element-plus";
 import TenantManagementAPI from "@/api/system/tenant-simple";
 import type { OptionItem } from "@/api/common";
 import { usePageTable, useTableSelection } from "@/composables";
@@ -184,6 +189,8 @@ const queryFormRef = ref<FormInstance>();
 const appFormRef = ref<FormInstance>();
 const sidebarCollapsed = ref(false);
 const tenantOptions = ref<OptionItem[]>([]);
+const tenantTreeRef = ref<InstanceType<typeof ElTree>>();
+const tenantKeyword = ref("");
 
 const { loading, list, total, params, fetchData, handleQuery, handleResetQuery } = usePageTable<
   AppItem,
@@ -214,6 +221,12 @@ const initialFormData: AppForm = {
 };
 
 const formData = reactive<AppForm>({ ...initialFormData });
+
+function filterTenantNode(value: string, data: { label?: string }): boolean {
+  return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+watch(tenantKeyword, (keyword) => tenantTreeRef.value?.filter(keyword));
 
 async function handleTenantNodeClick(node: OptionItem): Promise<void> {
   if (node.value == null) return;
@@ -330,37 +343,32 @@ onMounted(async () => {
     padding: 12px;
   }
 
-  &__header {
-    display: block;
+  &__search {
     flex-shrink: 0;
-    padding: 10px 12px;
-    background: var(--el-color-primary-light-9);
-    border-radius: 10px;
-
-    h3 {
-      margin: 0;
-      font-size: 15px;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      color: var(--el-text-color-secondary);
-    }
-  }
-
-  &__divider {
-    margin: 10px 0;
   }
 
   &__body {
     flex: 1 1 auto;
     min-height: 0;
+    padding-top: 8px;
     overflow: auto;
   }
 
   :deep(.el-tree-node__content) {
-    height: 32px;
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
   }
 }
 </style>
