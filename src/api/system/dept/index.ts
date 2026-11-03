@@ -112,10 +112,13 @@ const DeptAPI = {
     });
   },
   /** 获取部门下拉数据源 */
-  getOptions() {
+  getOptions(enterpriseId?: string) {
     return request<unknown, RawDeptOptionNode[]>({
       url: `${DEPT_BASE_URL}/options`,
       method: "get",
+      params: {
+        enterpriseId,
+      },
     }).then((nodes) => (nodes ?? []).flatMap((node) => (node.children ?? []).map(toOptionItem)));
   },
   /** 获取部门表单数据 */

@@ -3,7 +3,7 @@
   <div class="page-container page-container--split user-page">
     <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
       <div class="page-aside__inner">
-        <UserDeptTree v-model="params.deptId" @node-click="handleQuery" />
+        <UserEnterpriseTree @node-click="handleEnterpriseNodeClick" />
       </div>
       <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
         <el-icon :size="14">
@@ -328,7 +328,7 @@ import { usePageTable, useTableSelection } from "@/composables";
 import { CommonStatus, DeviceEnum, DialogMode, UserGender } from "@/enums";
 import { downloadFile } from "@/utils";
 
-import UserDeptTree from "./components/UserDeptTree.vue";
+import UserEnterpriseTree from "./components/UserEnterpriseTree.vue";
 import UserImportDialog from "./components/UserImportDialog.vue";
 
 defineOptions({
@@ -355,12 +355,19 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   initialParams: {
     pageNum: 1,
     pageSize: 10,
+    enterpriseId: undefined,
   },
   request: UserAPI.getPage,
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
 const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<UserItem>();
+
+async function handleEnterpriseNodeClick(node: { id?: string }): Promise<void> {
+  if (!node.id) return;
+  params.enterpriseId = node.id;
+  await handleQuery();
+}
 
 const dialogState = reactive({
   visible: false,

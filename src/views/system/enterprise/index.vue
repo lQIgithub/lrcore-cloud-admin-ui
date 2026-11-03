@@ -1,99 +1,135 @@
 <template>
-  <div class="page-container">
-    <el-card class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="params" :inline="true" label-suffix=":">
-        <el-form-item label="关键字" prop="keywords">
-          <el-input
-            v-model="params.keywords"
-            placeholder="请输入企业名称\编码\简称"
-            clearable
-            @keyup.enter="handleQuery()"
-          />
-        </el-form-item>
-
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="params.status" clearable placeholder="全部" style="width: 100px">
-            <el-option :value="CommonStatus.ENABLED" label="启用" />
-            <el-option :value="CommonStatus.DISABLED" label="禁用" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery()">搜索</el-button>
-          <el-button @click="handleResetQuery()">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card ref="tableWrapperRef" class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <el-button type="primary" @click="openDialog()">新增</el-button>
-          <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
-            删除
-          </el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="fetchData">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="tenant-card" shadow="never">
+          <div class="tenant-card__header">
+            <h3>租户列表</h3>
+            <p>选择租户后查看企业信息</p>
+          </div>
+          <el-divider class="tenant-card__divider" />
+          <div class="tenant-card__body">
+            <el-tree
+              :data="tenantOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              highlight-current
+              node-key="value"
+              @node-click="handleTenantNodeClick"
+            />
+          </div>
+        </el-card>
       </div>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
 
-      <div class="page-table-wrapper">
-        <el-table
-          ref="dataTableRef"
-          v-loading="loading"
-          :data="list"
-          class="page-table"
-          border
-          height="100%"
-          highlight-current-row
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column type="index" label="序号" width="60" />
-          <el-table-column label="企业名称" prop="name" min-width="180" />
-          <el-table-column label="企业简称" prop="abbreviation" min-width="120" />
-          <el-table-column label="企业编码" prop="code" min-width="120" />
-          <el-table-column label="上级企业" prop="parentName" min-width="140" />
-          <el-table-column label="联系电话" prop="phone" min-width="130" />
-          <el-table-column label="联系地址" prop="address" min-width="180" show-overflow-tooltip />
-          <el-table-column align="center" label="状态" width="90">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
-                {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column fixed="right" label="操作" width="160">
-            <template #default="scope">
-              <el-button type="primary" size="small" link @click="openDialog(scope.row.id)">
-                编辑
-              </el-button>
-              <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
+    <div class="page-main">
+      <el-card class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="params" :inline="true" label-suffix=":">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="params.keywords"
+              placeholder="请输入企业名称\编码\简称"
+              clearable
+              @keyup.enter="handleQuery()"
+            />
+          </el-form-item>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="params.pageNum"
-        v-model:limit="params.pageSize"
-        @pagination="fetchData"
-      />
-    </el-card>
+          <el-form-item label="状态" prop="status">
+            <el-select v-model="params.status" clearable placeholder="全部" style="width: 100px">
+              <el-option :value="CommonStatus.ENABLED" label="启用" />
+              <el-option :value="CommonStatus.DISABLED" label="禁用" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery()">搜索</el-button>
+            <el-button @click="handleResetQuery()">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card ref="tableWrapperRef" class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <el-button type="primary" @click="openDialog()">新增</el-button>
+            <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
+              删除
+            </el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="fetchData">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="page-table-wrapper">
+          <el-table
+            ref="dataTableRef"
+            v-loading="loading"
+            :data="list"
+            class="page-table"
+            border
+            height="100%"
+            highlight-current-row
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column type="index" label="序号" width="60" />
+            <el-table-column label="企业名称" prop="name" min-width="180" />
+            <el-table-column label="企业简称" prop="abbreviation" min-width="120" />
+            <el-table-column label="企业编码" prop="code" min-width="120" />
+            <el-table-column label="上级企业" prop="parentName" min-width="140" />
+            <el-table-column label="联系电话" prop="phone" min-width="130" />
+            <el-table-column
+              label="联系地址"
+              prop="address"
+              min-width="180"
+              show-overflow-tooltip
+            />
+            <el-table-column align="center" label="状态" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
+                  {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column fixed="right" label="操作" width="160">
+              <template #default="scope">
+                <el-button type="primary" size="small" link @click="openDialog(scope.row.id)">
+                  编辑
+                </el-button>
+                <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="params.pageNum"
+          v-model:limit="params.pageSize"
+          @pagination="fetchData"
+        />
+      </el-card>
+    </div>
 
     <el-drawer
       v-model="dialogState.visible"
@@ -103,6 +139,21 @@
       @close="closeDialog"
     >
       <el-form ref="enterpriseFormRef" :model="formData" :rules="rules" label-width="100px">
+        <el-form-item label="所属租户" prop="tenantId">
+          <el-select
+            v-model="formData.tenantId"
+            placeholder="请选择所属租户"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="tenant in tenantOptions"
+              :key="tenant.value"
+              :label="tenant.label"
+              :value="tenant.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="企业名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入企业名称" :maxlength="100" />
         </el-form-item>
@@ -168,7 +219,7 @@
 <script setup lang="ts">
 import { useFullscreen } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { FullScreen, Refresh } from "@element-plus/icons-vue";
+import { FullScreen, Refresh, ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 
 import EnterpriseAPI from "@/api/system/enterprise";
 import type {
@@ -177,6 +228,7 @@ import type {
   EnterpriseQueryParams,
 } from "@/api/system/enterprise";
 import type { OptionItem } from "@/api/common";
+import TenantManagementAPI from "@/api/system/tenant-simple";
 import { usePageTable, useTableSelection } from "@/composables";
 import { useAppStore } from "@/stores";
 import { CommonStatus, DeviceEnum } from "@/enums";
@@ -188,6 +240,8 @@ defineOptions({
 
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
+const sidebarCollapsed = ref(false);
+const tenantOptions = ref<OptionItem[]>([]);
 
 const appStore = useAppStore();
 const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "620px" : "90%"));
@@ -216,6 +270,7 @@ const dialogState = reactive({
 });
 
 const initialFormData: EnterpriseForm = {
+  tenantId: undefined,
   name: "",
   abbreviation: "",
   code: "",
@@ -230,7 +285,14 @@ const formData = reactive<EnterpriseForm>({ ...initialFormData });
 
 const parentOptions = ref<OptionItem[]>([]);
 
+async function handleTenantNodeClick(node: OptionItem): Promise<void> {
+  if (node.value == null) return;
+  params.tenantId = node.value.toString();
+  await handleQuery();
+}
+
 const rules: FormRules<EnterpriseForm> = {
+  tenantId: [{ required: true, message: "所属租户不能为空", trigger: "change" }],
   name: [{ required: true, message: "请输入企业名称", trigger: "blur" }],
   code: [{ required: true, message: "请输入企业编码", trigger: "blur" }],
   status: [{ required: true, message: "请选择企业状态", trigger: "change" }],
@@ -249,6 +311,7 @@ async function openDialog(id?: string): Promise<void> {
     Object.assign(formData, data);
   } else {
     dialogState.title = "新增企业";
+    formData.tenantId = params.tenantId;
   }
 }
 
@@ -324,7 +387,65 @@ function handleBatchDelete(): void {
   }
 }
 
-onMounted(() => {
-  handleQuery();
+onMounted(async () => {
+  const tenants = await TenantManagementAPI.getPage({
+    pageNum: 1,
+    pageSize: 100,
+  });
+  tenantOptions.value = tenants.list.map((tenant) => ({
+    value: tenant.id,
+    label: tenant.name,
+  }));
+  params.tenantId = tenantOptions.value[0]?.value?.toString();
+  await fetchData();
 });
 </script>
+
+<style lang="scss" scoped>
+.tenant-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__header {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    background: var(--el-color-primary-light-9);
+    border-radius: 10px;
+
+    h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  &__divider {
+    margin: 10px 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 32px;
+  }
+}
+</style>

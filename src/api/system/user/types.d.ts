@@ -30,6 +30,8 @@ export interface UserQueryParams extends BaseQueryParams {
   status?: number;
   /** 部门ID */
   deptId?: string;
+  /** 企业ID */
+  enterpriseId?: string;
   /** 创建时间 */
   createTime?: [string, string];
 }

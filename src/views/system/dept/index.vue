@@ -1,129 +1,148 @@
 ﻿<template>
-  <div class="page-container">
-    <el-card class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-        <el-form-item label="所属企业" prop="enterpriseId">
-          <el-select
-            v-model="queryParams.enterpriseId"
-            placeholder="请选择企业"
-            filterable
-            style="width: 220px"
-            @change="handleQuery"
-          >
-            <el-option
-              v-for="enterprise in enterpriseOptions"
-              :key="enterprise.value"
-              :label="enterprise.label"
-              :value="enterprise.value"
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="enterprise-card" shadow="never">
+          <div class="enterprise-card__header">
+            <h3>企业列表</h3>
+            <p>选择企业后查看部门信息</p>
+          </div>
+          <el-divider class="enterprise-card__divider" />
+          <div class="enterprise-card__body">
+            <el-tree
+              :data="enterpriseOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              highlight-current
+              node-key="value"
+              @node-click="handleEnterpriseNodeClick"
             />
-          </el-select>
-        </el-form-item>
+          </div>
+        </el-card>
+      </div>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
 
-        <el-form-item label="关键字" prop="keywords">
-          <el-input
-            v-model="queryParams.keywords"
-            placeholder="部门名称"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
+    <div class="page-main">
+      <el-card class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="queryParams.keywords"
+              placeholder="部门名称"
+              clearable
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
 
-        <el-form-item label="部门状态" prop="status">
-          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 100px">
-            <el-option :value="CommonStatus.ENABLED" label="正常" />
-            <el-option :value="CommonStatus.DISABLED" label="禁用" />
-          </el-select>
-        </el-form-item>
+          <el-form-item label="部门状态" prop="status">
+            <el-select
+              v-model="queryParams.status"
+              placeholder="全部"
+              clearable
+              style="width: 100px"
+            >
+              <el-option :value="CommonStatus.ENABLED" label="正常" />
+              <el-option :value="CommonStatus.DISABLED" label="禁用" />
+            </el-select>
+          </el-form-item>
 
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">搜索</el-button>
-          <el-button @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">搜索</el-button>
+            <el-button @click="handleResetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-    <el-card ref="tableWrapperRef" class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <el-button v-hasPerm="['sys:dept:create']" type="primary" @click="openDialog()">
-            新增
-          </el-button>
-          <el-button
-            v-hasPerm="['sys:dept:delete']"
-            type="danger"
-            :disabled="!hasSelection"
-            @click="handleDelete()"
+      <el-card ref="tableWrapperRef" class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <el-button v-hasPerm="['sys:dept:create']" type="primary" @click="openDialog()">
+              新增
+            </el-button>
+            <el-button
+              v-hasPerm="['sys:dept:delete']"
+              type="danger"
+              :disabled="!hasSelection"
+              @click="handleDelete()"
+            >
+              删除
+            </el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="handleQuery">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="page-table-wrapper">
+          <el-table
+            ref="dataTableRef"
+            v-loading="loading"
+            :data="list"
+            class="page-table"
+            row-key="id"
+            default-expand-all
+            border
+            height="100%"
+            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+            :row-class-name="getDeptRowClassName"
+            @selection-change="handleSelectionChange"
           >
-            删除
-          </el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="handleQuery">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
-      </div>
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column prop="name" label="部门名称" min-width="200" />
+            <el-table-column prop="code" label="部门编号" width="200" />
+            <el-table-column prop="sort" label="排序" width="100" />
 
-      <div class="page-table-wrapper">
-        <el-table
-          ref="dataTableRef"
-          v-loading="loading"
-          :data="list"
-          class="page-table"
-          row-key="id"
-          default-expand-all
-          border
-          height="100%"
-          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-          :row-class-name="getDeptRowClassName"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column prop="name" label="部门名称" min-width="200" />
-          <el-table-column prop="code" label="部门编号" width="200" />
-          <el-table-column prop="sort" label="排序" width="100" />
-
-          <el-table-column label="操作" fixed="right" align="left" width="200">
-            <template #default="scope">
-              <el-button
-                v-hasPerm="['sys:dept:create']"
-                type="primary"
-                link
-                size="small"
-                @click.stop="openDialog(scope.row.id, undefined)"
-              >
-                新增
-              </el-button>
-              <el-button
-                v-hasPerm="['sys:dept:update']"
-                type="primary"
-                link
-                size="small"
-                @click.stop="openDialog(scope.row.parentId, scope.row.id)"
-              >
-                编辑
-              </el-button>
-              <el-button
-                v-hasPerm="['sys:dept:delete']"
-                type="danger"
-                link
-                size="small"
-                @click.stop="handleDelete(scope.row.id)"
-              >
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
+            <el-table-column label="操作" fixed="right" align="left" width="200">
+              <template #default="scope">
+                <el-button
+                  v-hasPerm="['sys:dept:create']"
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="openDialog(scope.row.id, undefined)"
+                >
+                  新增
+                </el-button>
+                <el-button
+                  v-hasPerm="['sys:dept:update']"
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="openDialog(scope.row.parentId, scope.row.id)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-hasPerm="['sys:dept:delete']"
+                  type="danger"
+                  link
+                  size="small"
+                  @click.stop="handleDelete(scope.row.id)"
+                >
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+    </div>
 
     <el-dialog
       v-model="dialogState.visible"
@@ -183,7 +202,7 @@ import {
   type TreeInstance,
 } from "element-plus";
 import Sortable, { type MoveEvent } from "sortablejs";
-import { Refresh, FullScreen } from "@element-plus/icons-vue";
+import { Refresh, FullScreen, ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 
 import DeptAPI from "@/api/system/dept";
 import EnterpriseAPI from "@/api/system/enterprise";
@@ -199,6 +218,7 @@ defineOptions({
 
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
+const sidebarCollapsed = ref(false);
 
 const queryFormRef = ref<FormInstance>();
 const deptFormRef = ref<FormInstance>();
@@ -221,6 +241,12 @@ const dialogState = reactive({
 
 const deptOptions = ref<OptionItem[]>([]);
 const enterpriseOptions = ref<OptionItem[]>([]);
+
+async function handleEnterpriseNodeClick(node: OptionItem): Promise<void> {
+  if (node.value == null) return;
+  queryParams.enterpriseId = node.value.toString();
+  await handleQuery();
+}
 
 let deptTableSortable: Sortable | null = null;
 
@@ -403,7 +429,7 @@ function resetForm(): void {
  * @param deptId 部门 ID（编辑时传入）
  */
 async function openDialog(parentId?: string, deptId?: string): Promise<void> {
-  const data = await DeptAPI.getOptions();
+  const data = await DeptAPI.getOptions(formData.enterpriseId || queryParams.enterpriseId);
   deptOptions.value = [
     {
       value: "0",
@@ -508,7 +534,56 @@ function collectSortItems(
 
 onMounted(async () => {
   enterpriseOptions.value = await EnterpriseAPI.getOptions();
-  queryParams.enterpriseId = enterpriseOptions.value[0]?.value.toString();
+  queryParams.enterpriseId = enterpriseOptions.value[0]?.value?.toString();
   await fetchData();
 });
 </script>
+
+<style lang="scss" scoped>
+.enterprise-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__header {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    background: var(--el-color-primary-light-9);
+    border-radius: 10px;
+
+    h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+    }
+  }
+
+  &__divider {
+    margin: 10px 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 32px;
+  }
+}
+</style>

@@ -2,6 +2,7 @@ import type { BaseQueryParams } from "@/api/common";
 
 export interface EnterpriseQueryParams extends BaseQueryParams {
   keywords?: string;
+  tenantId?: string;
   status?: number;
 }
 
@@ -15,6 +16,7 @@ export interface EnterpriseItem {
   phone?: string;
   address?: string;
   description?: string;
+  tenantId?: string;
   status: number;
 }
 
@@ -27,5 +29,6 @@ export interface EnterpriseForm {
   description?: string;
   phone?: string;
   address?: string;
+  tenantId?: string;
   status: number;
 }
