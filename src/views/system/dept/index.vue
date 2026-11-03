@@ -123,6 +123,13 @@
             <el-table-column prop="name" label="部门名称" min-width="200" />
             <el-table-column prop="code" label="部门编号" width="200" />
             <el-table-column prop="sort" label="排序" width="100" />
+            <el-table-column align="center" label="是否内置" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
 
             <el-table-column label="操作" fixed="right" align="left" width="200">
               <template #default="scope">

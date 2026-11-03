@@ -6,6 +6,8 @@
 export interface MenuQueryParams {
   /** 搜索关键字 */
   keywords?: string;
+  /** 所属应用ID */
+  appId?: string;
 }
 
 /** 菜单视图对象 */
@@ -50,6 +52,8 @@ export interface MenuItem {
   visible?: number;
   /** 菜单范围(1=平台 2=业务) */
   scope?: number;
+  /** 是否内置(1:是；0:否) */
+  buildIn?: number;
 }
 
 /** 菜单表单对象 */

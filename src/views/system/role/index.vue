@@ -1,106 +1,189 @@
 ﻿<template>
-  <div class="page-container">
-    <el-card class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="params" :inline="true">
-        <el-form-item prop="keywords" label="关键字">
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="role-scope-card" shadow="never">
           <el-input
-            v-model="params.keywords"
-            placeholder="角色名称"
+            v-model="scopeKeyword"
+            class="role-scope-card__search"
+            placeholder="搜索应用"
             clearable
-            @keyup.enter="handleQuery"
+            :prefix-icon="Search"
           />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">搜索</el-button>
-          <el-button @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card ref="tableWrapperRef" class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <el-button type="primary" @click="handleCreateClick()">新增</el-button>
-          <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
-            删除
-          </el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="fetchData">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
-      </div>
-
-      <div class="page-table-wrapper">
-        <el-table
-          ref="dataTableRef"
-          :key="roleTableKey"
-          v-loading="loading"
-          class="page-table"
-          :data="list"
-          height="100%"
-          highlight-current-row
-          border
-          :row-class-name="getRoleRowClassName"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column label="角色名称" prop="name" min-width="100" />
-          <el-table-column label="角色编码" prop="code" width="150" />
-
-          <el-table-column label="数据权限" align="center" width="140" prop="dataScopeLabel" />
-
-          <el-table-column label="状态" align="center" width="100">
-            <template #default="scope">
-              <el-tag v-if="scope.row.status === CommonStatus.ENABLED" type="success">正常</el-tag>
-              <el-tag v-else type="info">禁用</el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="排序" align="center" width="80" prop="sort" />
-
-          <el-table-column fixed="right" label="操作" width="180" align="center">
-            <template #default="scope">
-              <div>
-                <el-button
-                  v-hasPerm="'sys:role:assign'"
-                  type="primary"
-                  size="small"
-                  link
-                  @click="handleAssignPermClick(scope.row)"
+          <div class="role-scope-card__body">
+            <el-tree
+              ref="scopeTreeRef"
+              :data="scopeOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              :filter-node-method="filterScopeNode"
+              highlight-current
+              node-key="value"
+              @node-click="handleScopeNodeClick"
+            >
+              <template #default="{ data }">
+                <el-tooltip
+                  placement="right"
+                  :show-after="300"
+                  :hide-after="0"
+                  :content="getScopeTooltip(data as ScopeOption)"
                 >
-                  分配权限
-                </el-button>
-                <el-button type="primary" size="small" link @click="handleEditClick(scope.row.id)">
-                  编辑
-                </el-button>
-                <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
-                  删除
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+                  <span>{{ data.label }}</span>
+                </el-tooltip>
+              </template>
+            </el-tree>
+          </div>
+        </el-card>
       </div>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="params.pageNum"
-        v-model:limit="params.pageSize"
-        class="page-pagination"
-        @pagination="fetchData"
-      />
-    </el-card>
+    <div class="page-main">
+      <el-card class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="params" :inline="true">
+          <el-form-item prop="keywords" label="关键字">
+            <el-input
+              v-model="params.keywords"
+              placeholder="角色名称"
+              clearable
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
+
+          <el-form-item prop="roleScope" label="角色级别">
+            <el-select
+              v-model="params.roleScope"
+              placeholder="全部级别"
+              clearable
+              style="width: 160px"
+            >
+              <el-option
+                v-for="item in roleScopeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">搜索</el-button>
+            <el-button @click="handleResetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card ref="tableWrapperRef" class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <el-button type="primary" @click="handleCreateClick()">新增</el-button>
+            <el-button type="danger" :disabled="!hasSelection" @click="handleBatchDelete()">
+              删除
+            </el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="fetchData">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="page-table-wrapper">
+          <el-table
+            ref="dataTableRef"
+            :key="roleTableKey"
+            v-loading="loading"
+            class="page-table"
+            :data="list"
+            height="100%"
+            highlight-current-row
+            border
+            :row-class-name="getRoleRowClassName"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column label="角色名称" prop="name" min-width="100" />
+            <el-table-column label="角色编码" prop="code" width="150" />
+            <el-table-column align="center" label="角色级别" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.roleScope === ROLE_SCOPE.PLATFORM ? 'success' : 'primary'">
+                  {{ getRoleLevelLabel(scope.row.roleScope) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="数据权限" align="center" width="140" prop="dataScopeLabel" />
+
+            <el-table-column label="是否内置" align="center" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" align="center" width="100">
+              <template #default="scope">
+                <el-tag v-if="scope.row.status === CommonStatus.ENABLED" type="success">
+                  正常
+                </el-tag>
+                <el-tag v-else type="info">禁用</el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="排序" align="center" width="80" prop="sort" />
+
+            <el-table-column fixed="right" label="操作" width="180" align="center">
+              <template #default="scope">
+                <div>
+                  <el-button
+                    v-hasPerm="'sys:role:assign'"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="handleAssignPermClick(scope.row)"
+                  >
+                    分配权限
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    link
+                    @click="handleEditClick(scope.row.id)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                    删除
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="params.pageNum"
+          v-model:limit="params.pageSize"
+          class="page-pagination"
+          @pagination="fetchData"
+        />
+      </el-card>
+    </div>
 
     <el-dialog
       v-model="dialogState.visible"
@@ -109,6 +192,17 @@
       @close="closeDialog"
     >
       <el-form ref="roleFormRef" :model="formData" :rules="rules" label-width="100px">
+        <el-form-item label="角色级别" prop="roleScope">
+          <el-select v-model="formData.roleScope" style="width: 100%">
+            <el-option
+              v-for="item in roleScopeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入角色名称" />
         </el-form-item>
@@ -238,16 +332,27 @@ import Sortable, { type SortableEvent } from "sortablejs";
 import {
   ElMessage,
   ElMessageBox,
+  type ElTree,
   type FormInstance,
   type FormRules,
   type TableInstance,
   type TreeInstance,
   type TreeNodeData,
 } from "element-plus";
-import { FullScreen, Refresh, Search, Switch, QuestionFilled } from "@element-plus/icons-vue";
+import {
+  ArrowLeft,
+  ArrowRight,
+  FullScreen,
+  Refresh,
+  Search,
+  Switch,
+  QuestionFilled,
+} from "@element-plus/icons-vue";
 
 import RoleAPI from "@/api/system/role";
+import AppAPI from "@/api/system/app";
 import type { RoleForm, RoleItem, RoleQueryParams } from "@/api/system/role";
+import { ROLE_SCOPE } from "@/api/system/role/constants";
 import MenuAPI from "@/api/system/menu";
 import DeptAPI from "@/api/system/dept";
 import type { OptionItem } from "@/api/common";
@@ -272,6 +377,22 @@ const permTreeRef = ref<TreeInstance>();
 let roleTableSortable: Sortable | null = null;
 const roleTableKey = ref(0);
 
+type ScopeOption = OptionItem & {
+  code: string;
+  description?: string;
+};
+
+const scopeOptions = ref<ScopeOption[]>([]);
+const scopeTreeRef = ref<InstanceType<typeof ElTree>>();
+const scopeKeyword = ref("");
+const sidebarCollapsed = ref(false);
+const selectedAppId = ref<string>();
+
+const roleScopeOptions = [
+  { label: "平台级", value: ROLE_SCOPE.PLATFORM },
+  { label: "应用级", value: ROLE_SCOPE.APP },
+];
+
 // 自定义数据权限取值
 const DATA_SCOPE_CUSTOM = 5;
 
@@ -291,6 +412,7 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   initialParams: {
     pageNum: 1,
     pageSize: 10,
+    appId: selectedAppId.value,
     keywords: "",
   },
   request: RoleAPI.getPage,
@@ -305,6 +427,7 @@ const dialogState = reactive({
 });
 
 const initialFormData: RoleForm = {
+  roleScope: ROLE_SCOPE.APP,
   dataScope: 1,
   sort: 1,
   status: CommonStatus.ENABLED,
@@ -322,6 +445,52 @@ const rules: FormRules<RoleForm> = {
 
 // 部门下拉选项（懒加载，新增/编辑时才请求）
 const deptOptions = ref<OptionItem[]>([]);
+
+function filterScopeNode(value: string, data: { label?: string }): boolean {
+  return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+function getScopeTooltip(scope: ScopeOption): string {
+  const lines = [`编码：${scope.code}`];
+  if (scope.description) {
+    lines.push(`描述：${scope.description}`);
+  }
+  return lines.join("\n");
+}
+
+function getRoleLevelLabel(roleScope?: string): string {
+  return roleScope === ROLE_SCOPE.PLATFORM ? "平台级" : "应用级";
+}
+
+watch(scopeKeyword, (keyword) => scopeTreeRef.value?.filter(keyword));
+
+async function handleScopeNodeClick(node: ScopeOption): Promise<void> {
+  if (node.value == null) return;
+
+  selectedAppId.value = node.value.toString();
+  params.appId = selectedAppId.value;
+  await handleQuery();
+}
+
+async function loadScopeOptions(): Promise<void> {
+  const apps = await AppAPI.getPage({
+    pageNum: 1,
+    pageSize: 1000,
+    status: CommonStatus.ENABLED,
+  });
+
+  scopeOptions.value = (apps.list ?? []).map((app) => ({
+    value: app.id,
+    label: app.name,
+    code: app.code,
+    description: app.description,
+  }));
+  if (!selectedAppId.value) {
+    selectedAppId.value = apps.list?.[0]?.id?.toString();
+    params.appId = selectedAppId.value;
+  }
+  nextTick(() => scopeTreeRef.value?.setCurrentKey(selectedAppId.value));
+}
 
 interface CheckedRole {
   id?: string;
@@ -375,8 +544,16 @@ function resetForm(): void {
  *
  * 部门下拉首次打开时请求，之后复用缓存
  */
+
+/**
+ * 打开新增角色弹窗
+ *
+ * 部门下拉首次打开时请求，之后复用缓存
+ */
 async function handleCreateClick(): Promise<void> {
   dialogState.title = "新增角色";
+  formData.roleScope = ROLE_SCOPE.APP;
+  formData.appId = selectedAppId.value;
   if (deptOptions.value.length === 0) {
     deptOptions.value = await DeptAPI.getOptions();
   }
@@ -566,7 +743,8 @@ watch(permKeywords, (value) => {
   permTreeRef.value?.filter(value);
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await loadScopeOptions();
   handleQuery();
   initRoleRowDrag();
 });
@@ -630,6 +808,49 @@ async function refreshRoleTable(): Promise<void> {
 </script>
 
 <style scoped>
+.role-scope-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__search {
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
+  }
+}
+
 .el-table .el-table__row {
   cursor: grab;
 }

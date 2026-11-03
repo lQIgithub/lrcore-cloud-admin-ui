@@ -92,6 +92,13 @@
             <el-table-column label="应用编码" prop="code" min-width="120" />
             <el-table-column label="访问地址" prop="url" min-width="180" show-overflow-tooltip />
             <el-table-column label="权限前缀" prop="permissionPrefix" min-width="110" />
+            <el-table-column align="center" label="是否内置" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column align="center" label="状态" width="90">
               <template #default="scope">
                 <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">

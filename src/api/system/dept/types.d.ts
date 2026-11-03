@@ -32,6 +32,8 @@ export interface DeptItem {
   sort?: number;
   /** 状态(1:启用；0:禁用) */
   status?: number;
+  /** 是否内置(1:是；0:否) */
+  buildIn?: number;
   /** 父节点ID路径 */
   treePath?: string;
   /** 修改时间 */

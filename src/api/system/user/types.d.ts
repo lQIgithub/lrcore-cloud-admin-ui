@@ -8,6 +8,8 @@ import type { BaseQueryParams } from "@/api/common";
 export interface UserInfo {
   /** 用户ID */
   userId?: string;
+  /** 企业ID */
+  enterpriseId?: string;
   /** 用户名 */
   username?: string;
   /** 用户昵称 */
@@ -60,6 +62,8 @@ export interface UserItem {
   roleNames?: string;
   /** 用户状态(1:启用;0:禁用) */
   status?: number;
+  /** 是否内置(1:是；0:否) */
+  buildIn?: number;
   /** 用户名 */
   username?: string;
 }
@@ -72,6 +76,8 @@ export interface UserForm {
   avatar?: string;
   /** 部门ID */
   deptId?: string;
+  /** 企业ID */
+  enterpriseId?: string;
   /** 用户邮箱 */
   email?: string;
   /** 性别 */

@@ -5,6 +5,7 @@ import { CommonStatus } from "@/enums";
 
 export type DeptOption = OptionItem & {
   code: string;
+  disabled?: boolean;
 };
 
 const SYSTEM_BASE_PREFIX = "/lrcore-system";
@@ -20,6 +21,7 @@ interface RawDeptItem {
   parentId?: string | number;
   status?: number;
   sortOrder?: number;
+  buildIn?: number;
 }
 
 /** SysDeptController 返回的树形节点字段 */
@@ -50,6 +52,7 @@ function toDeptItem(item: RawDeptItem): DeptItem {
     parentId: item.parentId === undefined ? undefined : String(item.parentId),
     sort: item.sortOrder,
     status: toFrontendStatus(item.status),
+    buildIn: item.buildIn,
   };
 }
 

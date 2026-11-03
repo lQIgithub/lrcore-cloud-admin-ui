@@ -116,6 +116,13 @@
               min-width="180"
               show-overflow-tooltip
             />
+            <el-table-column align="center" label="是否内置" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column align="center" label="状态" width="90">
               <template #default="scope">
                 <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">

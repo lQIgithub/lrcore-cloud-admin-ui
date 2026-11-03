@@ -1,143 +1,198 @@
 ﻿<template>
-  <div class="page-container">
-    <el-card class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-        <el-form-item label="关键字" prop="keywords">
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="menu-app-card" shadow="never">
           <el-input
-            v-model="queryParams.keywords"
-            placeholder="菜单名称"
+            v-model="appKeyword"
+            class="menu-app-card__search"
+            placeholder="搜索应用"
             clearable
-            @keyup.enter="handleQuery"
+            :prefix-icon="Search"
           />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">搜索</el-button>
-          <el-button @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card ref="tableWrapperRef" class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <!--          v-hasPerm="['sys:menu:create']"-->
-          <el-button type="primary" @click="openDialog('0')">新增</el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="handleQuery">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
-      </div>
-
-      <div class="page-table-wrapper">
-        <el-table
-          ref="dataTableRef"
-          :key="menuTableKey"
-          v-loading="loading"
-          class="page-table"
-          border
-          row-key="id"
-          :data="list"
-          height="100%"
-          :tree-props="{
-            children: 'children',
-            hasChildren: 'hasChildren',
-          }"
-          :row-class-name="getMenuRowClassName"
-          @row-click="handleRowClick"
-        >
-          <el-table-column label="菜单名称" min-width="200">
-            <template #default="scope">
-              <div class="menu-name-cell">
-                <span class="menu-name-cell__icon">
-                  <template v-if="scope.row.icon && scope.row.icon.startsWith('el-icon')">
-                    <el-icon style="vertical-align: -0.15em">
-                      <component :is="scope.row.icon.replace('el-icon-', '')" />
-                    </el-icon>
-                  </template>
-                  <template v-else-if="scope.row.icon">
-                    <span :class="`i-svg:${scope.row.icon}`" />
-                  </template>
+          <div class="menu-app-card__body">
+            <el-tree
+              ref="appTreeRef"
+              :data="appTreeOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              :filter-node-method="filterAppNode"
+              highlight-current
+              node-key="value"
+              @node-click="handleMenuContextClick"
+            >
+              <template #default="{ data }">
+                <span class="menu-app-node">
+                  {{ data.label }}
                 </span>
-                <span class="menu-name-cell__text">{{ scope.row.name }}</span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="类型" align="center" width="80">
-            <template #default="scope">
-              <el-tag v-if="scope.row.type === MenuTypeEnum.CATALOG" type="warning">目录</el-tag>
-              <el-tag v-if="scope.row.type === MenuTypeEnum.MENU" type="success">菜单</el-tag>
-              <el-tag v-if="scope.row.type === MenuTypeEnum.BUTTON" type="danger">按钮</el-tag>
-              <el-tag v-if="scope.row.type === MenuTypeEnum.EXTERNAL" type="primary">外链</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="访问路径" align="left" min-width="180">
-            <template #default="scope">
-              {{ getMenuAccessPath(scope.row) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="页面组件" align="left" min-width="180">
-            <template #default="scope">
-              {{ getMenuComponentPath(scope.row) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="权限标识" align="center" width="200" prop="perm" />
-          <el-table-column v-if="showMenuScope" label="范围" align="center" width="100">
-            <template #default="scope">
-              <el-tag v-if="scope.row.scope === MenuScopeEnum.PLATFORM" type="danger">平台</el-tag>
-              <el-tag v-else type="success">业务</el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="状态" align="center" width="80">
-            <template #default="scope">
-              <el-tag v-if="scope.row.visible === CommonStatus.ENABLED" type="success">显示</el-tag>
-              <el-tag v-else type="info">隐藏</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="排序" align="center" width="80" prop="sort" />
-          <el-table-column fixed="right" align="center" label="操作" width="220">
-            <template #default="scope">
-              <!--                v-hasPerm="['sys:menu:create']"-->
-              <el-button
-                v-if="
-                  scope.row.type === MenuTypeEnum.CATALOG || scope.row.type === MenuTypeEnum.MENU
-                "
-                type="primary"
-                link
-                size="small"
-                @click.stop="openDialog(scope.row.id)"
-              >
-                新增
-              </el-button>
-              <!--                v-hasPerm="['sys:menu:update']"-->
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click.stop="openDialog(undefined, scope.row.id)"
-              >
-                编辑
-              </el-button>
-              <!--                v-hasPerm="['sys:menu:delete']"-->
-              <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+              </template>
+            </el-tree>
+          </div>
+        </el-card>
       </div>
-    </el-card>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
+
+    <div class="page-main">
+      <el-card class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="queryParams.keywords"
+              placeholder="菜单名称"
+              clearable
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">搜索</el-button>
+            <el-button @click="handleResetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card ref="tableWrapperRef" class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <!--          v-hasPerm="['sys:menu:create']"-->
+            <el-button type="primary" @click="openDialog('0')">新增</el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="handleQuery">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="page-table-wrapper">
+          <el-table
+            ref="dataTableRef"
+            :key="menuTableKey"
+            v-loading="loading"
+            class="page-table"
+            border
+            row-key="id"
+            :data="list"
+            height="100%"
+            :tree-props="{
+              children: 'children',
+              hasChildren: 'hasChildren',
+            }"
+            :row-class-name="getMenuRowClassName"
+            @row-click="handleRowClick"
+          >
+            <el-table-column label="菜单名称" min-width="200">
+              <template #default="scope">
+                <div class="menu-name-cell">
+                  <span class="menu-name-cell__icon">
+                    <template v-if="scope.row.icon && scope.row.icon.startsWith('el-icon')">
+                      <el-icon style="vertical-align: -0.15em">
+                        <component :is="scope.row.icon.replace('el-icon-', '')" />
+                      </el-icon>
+                    </template>
+                    <template v-else-if="scope.row.icon">
+                      <span :class="`i-svg:${scope.row.icon}`" />
+                    </template>
+                  </span>
+                  <span class="menu-name-cell__text">{{ scope.row.name }}</span>
+                </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="类型" align="center" width="80">
+              <template #default="scope">
+                <el-tag v-if="scope.row.type === MenuTypeEnum.CATALOG" type="warning">目录</el-tag>
+                <el-tag v-if="scope.row.type === MenuTypeEnum.MENU" type="success">菜单</el-tag>
+                <el-tag v-if="scope.row.type === MenuTypeEnum.BUTTON" type="danger">按钮</el-tag>
+                <el-tag v-if="scope.row.type === MenuTypeEnum.EXTERNAL" type="primary">外链</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="访问路径" align="left" min-width="180">
+              <template #default="scope">
+                {{ getMenuAccessPath(scope.row) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="页面组件" align="left" min-width="180">
+              <template #default="scope">
+                {{ getMenuComponentPath(scope.row) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="权限标识" align="center" width="200" prop="perm" />
+            <el-table-column label="范围" align="center" width="100">
+              <template #default="scope">
+                <el-tag
+                  v-if="getMenuScope(scope.row.appId) === MenuScopeEnum.PLATFORM"
+                  type="danger"
+                >
+                  平台级
+                </el-tag>
+                <el-tag v-else type="success">应用级</el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="是否内置" align="center" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" align="center" width="80">
+              <template #default="scope">
+                <el-tag v-if="scope.row.visible === CommonStatus.ENABLED" type="success">
+                  显示
+                </el-tag>
+                <el-tag v-else type="info">隐藏</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="排序" align="center" width="80" prop="sort" />
+            <el-table-column fixed="right" align="center" label="操作" width="220">
+              <template #default="scope">
+                <!--                v-hasPerm="['sys:menu:create']"-->
+                <el-button
+                  v-if="
+                    scope.row.type === MenuTypeEnum.CATALOG || scope.row.type === MenuTypeEnum.MENU
+                  "
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="openDialog(scope.row.id)"
+                >
+                  新增
+                </el-button>
+                <!--                v-hasPerm="['sys:menu:update']"-->
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="openDialog(undefined, scope.row.id)"
+                >
+                  编辑
+                </el-button>
+                <!--                v-hasPerm="['sys:menu:delete']"-->
+                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+    </div>
 
     <el-drawer
       v-model="dialogState.visible"
@@ -385,15 +440,31 @@
           </div>
         </el-form-item>
 
-        <el-form-item
-          v-if="formData.type !== MenuTypeEnum.BUTTON && showMenuScope"
-          prop="scope"
-          label="菜单范围"
-        >
-          <el-radio-group v-model="formData.scope">
-            <el-radio :value="MenuScopeEnum.PLATFORM">平台菜单</el-radio>
-            <el-radio :value="MenuScopeEnum.TENANT">业务菜单</el-radio>
+        <el-form-item v-if="formData.type !== MenuTypeEnum.BUTTON" prop="scope" label="菜单级别">
+          <el-radio-group v-model="formData.scope" @change="handleMenuScopeChange">
+            <el-radio :value="MenuScopeEnum.PLATFORM">平台级</el-radio>
+            <el-radio :value="MenuScopeEnum.TENANT">应用级</el-radio>
           </el-radio-group>
+        </el-form-item>
+
+        <el-form-item
+          v-if="formData.type !== MenuTypeEnum.BUTTON && formData.scope === MenuScopeEnum.TENANT"
+          prop="appId"
+          label="所属应用"
+        >
+          <el-select
+            v-model="formData.appId"
+            placeholder="请选择应用"
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="app in appOptions"
+              :key="app.value"
+              :label="app.label"
+              :value="app.value"
+            />
+          </el-select>
         </el-form-item>
 
         <el-form-item v-if="formData.type !== MenuTypeEnum.BUTTON" label="图标" prop="icon">
@@ -431,11 +502,14 @@ import {
   type TreeInstance,
 } from "element-plus";
 import {
+  ArrowLeft,
+  ArrowRight,
   CirclePlusFilled,
   DeleteFilled,
   FullScreen,
   QuestionFilled,
   Refresh,
+  Search,
 } from "@element-plus/icons-vue";
 
 import MenuAPI from "@/api/system/menu";
@@ -444,7 +518,6 @@ import type { OptionItem } from "@/api/common";
 import { useAppStore } from "@/stores/app";
 import { CommonStatus, MenuScopeEnum, MenuTypeEnum } from "@/enums";
 import { DeviceEnum } from "@/enums/settings";
-import { isTenantEnabled } from "@/utils/tenant";
 import { isValidURL } from "@/utils";
 import { showApiNotification } from "@/utils/message";
 
@@ -455,17 +528,28 @@ defineOptions({
 
 const appStore = useAppStore();
 
+interface MenuAppOption {
+  value: string;
+  label: string;
+  appCode?: string;
+}
+
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
 const queryFormRef = ref<FormInstance>();
 const menuFormRef = ref<FormInstance>();
 const dataTableRef = ref<TreeInstance>();
+const appTreeRef = ref<TreeInstance>();
 
 const loading = ref(false);
 const list = ref<MenuItem[]>([]);
 const menuTableKey = ref(0);
 const queryParams = reactive<MenuQueryParams>({ keywords: "" });
+const appKeyword = ref("");
+const sidebarCollapsed = ref(false);
+const appOptions = ref<MenuAppOption[]>([]);
+const selectedMenuKey = ref("platform");
 
 const dialogState = reactive({
   title: "新增菜单",
@@ -475,6 +559,27 @@ const dialogState = reactive({
 let menuTableSortable: Sortable | null = null;
 
 const menuOptions = ref<OptionItem[]>([]);
+
+const appTreeOptions = computed<OptionItem[]>(() =>
+  appOptions.value.map((app) => ({
+    value: app.value,
+    label: app.label,
+  }))
+);
+
+const platformAppId = computed(
+  () => appOptions.value.find((app) => app.appCode === "system")?.value
+);
+
+const selectedAppId = computed(() => {
+  return selectedMenuKey.value;
+});
+
+const selectedScope = computed(() =>
+  appOptions.value.find((app) => app.value === selectedAppId.value)?.appCode === "system"
+    ? MenuScopeEnum.PLATFORM
+    : MenuScopeEnum.TENANT
+);
 
 const initialFormData: MenuForm = {
   id: undefined,
@@ -498,9 +603,6 @@ const menuTypes = [
 const formData = reactive<MenuForm>({ ...initialFormData });
 const currentMenuType = ref<MenuTypeEnum>(MenuTypeEnum.MENU);
 const menuTypeDrafts = reactive<Record<MenuTypeEnum, Partial<MenuForm>>>(createMenuTypeDrafts());
-
-// 多租户关闭时隐藏菜单范围字段。
-const showMenuScope = computed(() => isTenantEnabled());
 
 // 抽屉宽度（响应式）。
 const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "600px" : "90%"));
@@ -563,6 +665,10 @@ const menuTypeHint = computed(() => {
   return "";
 });
 
+watch(appKeyword, (value) => {
+  appTreeRef.value?.filter(value);
+});
+
 const validateRouteName = (_: unknown, value: string, callback: (error?: Error) => void) => {
   if (showRouteName.value && !value) {
     callback(new Error("请输入页面标识"));
@@ -573,6 +679,14 @@ const validateRouteName = (_: unknown, value: string, callback: (error?: Error) 
 
 function isStatusEnabled(value?: number | boolean): boolean {
   return value === CommonStatus.ENABLED || value === true;
+}
+
+function validateAppId(_: unknown, value: string, callback: (error?: Error) => void) {
+  if (formData.scope === MenuScopeEnum.TENANT && !value) {
+    callback(new Error("请选择所属应用"));
+    return;
+  }
+  callback();
 }
 
 function createMenuTypeDrafts(): Record<MenuTypeEnum, Partial<MenuForm>> {
@@ -671,7 +785,15 @@ const rules: FormRules<MenuForm> = {
   perm: [{ required: true, message: "请输入权限标识", validator: validatePerm, trigger: "blur" }],
 
   visible: [{ required: true, message: "请选择显示状态", trigger: "change" }],
-  scope: [{ required: true, message: "请选择菜单范围", trigger: "change" }],
+  scope: [{ required: true, message: "请选择菜单级别", trigger: "change" }],
+  appId: [
+    {
+      required: true,
+      message: "请选择所属应用",
+      validator: validateAppId,
+      trigger: "change",
+    },
+  ],
 };
 
 /**
@@ -680,12 +802,47 @@ const rules: FormRules<MenuForm> = {
 async function fetchData(): Promise<void> {
   loading.value = true;
   try {
-    list.value = await MenuAPI.getList(queryParams);
+    list.value = await MenuAPI.getList({
+      ...queryParams,
+      appId: selectedAppId.value,
+    });
     await nextTick();
     initMenuRowDrag();
   } finally {
     loading.value = false;
   }
+}
+
+async function fetchApps(): Promise<void> {
+  const apps = await MenuAPI.getApps();
+  appOptions.value = (apps ?? []).map((app) => ({
+    value: String(app.id),
+    label: app.appName ?? app.appCode ?? "未命名应用",
+    appCode: app.appCode,
+  }));
+}
+
+function filterAppNode(value: string, data: unknown): boolean {
+  if (!value) return true;
+  const option = data as OptionItem;
+  return option.label?.toLowerCase().includes(value.toLowerCase()) ?? false;
+}
+
+function handleMenuContextClick(data: OptionItem): void {
+  selectedMenuKey.value = String(data.value);
+  fetchData();
+}
+
+function handleMenuScopeChange(): void {
+  formData.appId =
+    formData.scope === MenuScopeEnum.PLATFORM
+      ? platformAppId.value
+      : selectedAppId.value || appOptions.value[0]?.value;
+  nextTick(() => menuFormRef.value?.clearValidate("appId"));
+}
+
+function getMenuScope(appId?: string): MenuScopeEnum {
+  return appId && appId === platformAppId.value ? MenuScopeEnum.PLATFORM : MenuScopeEnum.TENANT;
 }
 
 async function refreshMenuTable(): Promise<void> {
@@ -997,13 +1154,14 @@ function resetForm(): void {
  * @param menuId 菜单 ID（编辑时传入）
  */
 async function openDialog(parentId?: string, menuId?: string): Promise<void> {
-  const data = await MenuAPI.getOptions(true);
+  const data = await MenuAPI.getOptions(true, selectedAppId.value);
   menuOptions.value = [{ value: "0", label: "顶级菜单", children: data }];
 
   dialogState.visible = true;
   if (menuId) {
     dialogState.title = "编辑菜单";
     const form = await MenuAPI.getFormData(menuId);
+    form.scope = getMenuScope(form.appId);
     assignFormData(form);
   } else {
     dialogState.title = "新增菜单";
@@ -1011,6 +1169,8 @@ async function openDialog(parentId?: string, menuId?: string): Promise<void> {
     assignFormData({
       ...initialFormData,
       parentId: nextParentId,
+      scope: selectedScope.value,
+      appId: selectedAppId.value,
       type: getDefaultMenuType(nextParentId),
     });
   }
@@ -1161,7 +1321,11 @@ function collectSortItems(
   return sortItems;
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchApps();
+  await nextTick();
+  selectedMenuKey.value = appOptions.value[0]?.value ?? "";
+  appTreeRef.value?.setCurrentKey(selectedMenuKey.value);
   fetchData();
 });
 </script>
@@ -1169,6 +1333,49 @@ onMounted(() => {
 <style scoped>
 .menu-form {
   padding-right: 4px;
+}
+
+.menu-app-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__search {
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
+  }
 }
 
 .el-table .el-table__row {

@@ -17,6 +17,7 @@ export interface AppItem {
   remark?: string;
   tenantId?: string;
   status: number;
+  buildIn?: number;
 }
 
 export interface AppForm {

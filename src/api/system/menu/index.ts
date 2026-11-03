@@ -25,6 +25,7 @@ interface RawMenuNode {
   hidden?: boolean;
   keepLive?: boolean;
   alwaysShow?: boolean;
+  buildIn?: number;
   children?: RawMenuNode[];
 }
 
@@ -36,6 +37,7 @@ interface RawMenuPage {
 /** 应用实体字段 */
 interface RawAppNode {
   id?: string | number;
+  appName?: string;
   appCode?: string;
   status?: number;
 }
@@ -89,6 +91,7 @@ function toMenuItem(item: RawMenuNode): MenuItem {
     visible: isFrontendEnabled(item.status) ? 1 : 0,
     keepAlive: item.keepLive ? 1 : 0,
     alwaysShow: item.alwaysShow ? 1 : 0,
+    buildIn: item.buildIn,
     params: [],
   };
 }
@@ -122,6 +125,7 @@ function buildMenuTree(items: MenuItem[]): MenuItem[] {
 
 function filterMenus(items: MenuItem[], queryParams?: MenuQueryParams): MenuItem[] {
   return items.filter((item) => {
+    if (queryParams?.appId && item.appId !== queryParams.appId) return false;
     if (!queryParams?.keywords) return true;
 
     const keyword = queryParams.keywords.toLowerCase();
@@ -209,16 +213,20 @@ const MenuAPI = {
   getRoutes() {
     return request<unknown, RouteItem[]>({ url: `${MENU_BASE_URL}/routes`, method: "get" });
   },
+  /** 获取菜单所属应用列表 */
+  getApps() {
+    return getAppList();
+  },
   /** 获取菜单树形列表 */
   getList(queryParams: MenuQueryParams) {
     return getRawMenus().then((items) => buildMenuTree(filterMenus(items, queryParams)));
   },
   /** 获取菜单下拉数据源 */
-  getOptions(onlyParent?: boolean, scope?: number) {
-    return Promise.all([
-      getRawMenus(),
-      scope === undefined ? Promise.resolve(undefined) : resolveAppId(scope),
-    ]).then(([items, appId]) => {
+  getOptions(onlyParent?: boolean, scopeOrAppId?: number | string) {
+    const appIdPromise =
+      typeof scopeOrAppId === "number" ? resolveAppId(scopeOrAppId) : Promise.resolve(scopeOrAppId);
+
+    return Promise.all([getRawMenus(), appIdPromise]).then(([items, appId]) => {
       const filteredItems = items.filter((item) => {
         if (onlyParent && item.type === MenuTypeEnum.BUTTON) return false;
         if (appId && item.appId !== appId) return false;

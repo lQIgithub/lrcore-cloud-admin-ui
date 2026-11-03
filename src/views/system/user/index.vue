@@ -113,6 +113,13 @@
               </template>
             </el-table-column>
             <el-table-column label="用户名" min-width="120" prop="username" show-overflow-tooltip />
+            <el-table-column label="是否内置" align="center" width="90">
+              <template #default="scope">
+                <el-tag :type="scope.row.buildIn === 1 ? 'warning' : 'info'">
+                  {{ scope.row.buildIn === 1 ? "是" : "否" }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="状态" align="center" width="80">
               <template #default="scope">
                 <el-tag
@@ -326,7 +333,9 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "elem
 
 import UserAPI from "@/api/system/user";
 import DeptAPI from "@/api/system/dept";
+import type { DeptOption } from "@/api/system/dept";
 import RoleAPI from "@/api/system/role";
+import EnterpriseAPI from "@/api/system/enterprise";
 import type { UserForm, UserItem, UserQueryParams } from "@/api/system/user";
 import type { OptionItem } from "@/api/common";
 import { useAppStore, useUserStore } from "@/stores";
@@ -376,9 +385,11 @@ async function handleSidebarNodeClick(node: {
 }): Promise<void> {
   if (!node.id) return;
   if (node.type === "dept") {
+    selectedEnterpriseId.value = node.parentId;
     params.deptId = node.id;
     params.enterpriseId = node.parentId;
   } else {
+    selectedEnterpriseId.value = node.id;
     params.deptId = undefined;
     params.enterpriseId = node.id;
   }
@@ -415,7 +426,8 @@ const resetPasswordForm = reactive<ResetPasswordForm>({
   password: "",
 });
 
-const deptOptions = ref<OptionItem[]>([]);
+const deptOptions = ref<DeptOption[]>([]);
+const selectedEnterpriseId = ref<string>();
 const roleOptions = ref<OptionItem[]>([]);
 
 const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "600px" : "90%"));
@@ -453,11 +465,30 @@ function getAvatarText(row: UserItem): string {
 /**
  * 加载表单所需的下拉选项（角色 + 部门），并行请求。
  */
-async function loadFormOptions(): Promise<void> {
-  [roleOptions.value, deptOptions.value] = await Promise.all([
+async function loadFormOptions(preferredEnterpriseId?: string): Promise<void> {
+  const enterpriseId =
+    preferredEnterpriseId ??
+    selectedEnterpriseId.value ??
+    userStore.userInfo?.enterpriseId ??
+    (await userStore.getUserInfo()).enterpriseId;
+  const [roles, departments, enterprise] = await Promise.all([
     RoleAPI.getOptions(),
-    DeptAPI.getOptions(),
+    enterpriseId ? DeptAPI.getOptions(enterpriseId) : Promise.resolve([]),
+    enterpriseId ? EnterpriseAPI.getFormData(enterpriseId) : Promise.resolve(undefined),
   ]);
+
+  roleOptions.value = roles;
+  deptOptions.value = enterprise?.id
+    ? [
+        {
+          value: enterprise.id,
+          label: enterprise.name,
+          code: enterprise.code,
+          disabled: true,
+          children: departments,
+        },
+      ]
+    : departments;
 }
 
 /**
@@ -503,8 +534,8 @@ async function handleCreateClick(): Promise<void> {
 async function handleEditClick(id: string): Promise<void> {
   dialogState.title = "修改用户";
   dialogState.mode = DialogMode.EDIT;
-  await loadFormOptions();
   const data = await UserAPI.getFormData(id);
+  await loadFormOptions(data.enterpriseId);
   Object.assign(formData, data);
   openDialog();
 }

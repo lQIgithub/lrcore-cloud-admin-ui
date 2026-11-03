@@ -35,6 +35,7 @@ export interface TenantItem {
   planId?: number;
   status?: number;
   remark?: string;
+  buildIn?: number;
   expireTime?: string;
   createTime?: string;
   updateTime?: string;

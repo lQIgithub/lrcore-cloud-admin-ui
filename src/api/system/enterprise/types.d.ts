@@ -18,6 +18,7 @@ export interface EnterpriseItem {
   description?: string;
   tenantId?: string;
   status: number;
+  buildIn?: number;
 }
 
 export interface EnterpriseForm {

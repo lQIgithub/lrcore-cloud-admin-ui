@@ -4,10 +4,16 @@
 
 import type { BaseQueryParams } from "@/api/common";
 
+/** 角色级别 */
+export type RoleScope = "PLATFORM" | "APP";
+
 /** 角色分页查询参数 */
 export interface RoleQueryParams extends BaseQueryParams {
   /** 搜索关键字 */
   keywords?: string;
+  appId?: string;
+  /** 角色级别 */
+  roleScope?: RoleScope;
 }
 
 /** 角色分页对象 */
@@ -18,6 +24,9 @@ export interface RoleItem {
   code?: string;
   /** 角色名称 */
   name?: string;
+  appId?: string;
+  /** 角色级别 */
+  roleScope?: RoleScope;
   /** 排序 */
   sort?: number;
   /** 角色状态 */
@@ -26,6 +35,8 @@ export interface RoleItem {
   dataScope?: number;
   /** 数据权限标签 */
   dataScopeLabel?: string;
+  /** 是否内置(1:是；0:否) */
+  buildIn?: number;
   /** 修改时间 */
   updateTime?: Date;
 }
@@ -38,6 +49,9 @@ export interface RoleForm {
   code?: string;
   /** 角色名称 */
   name?: string;
+  appId?: string;
+  /** 角色级别 */
+  roleScope?: RoleScope;
   /** 排序 */
   sort?: number;
   /** 数据权限(1-所有数据 2-部门及子部门数据 3-本部门数据 4-本人数据 5-自定义部门数据) */

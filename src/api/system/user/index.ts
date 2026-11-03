@@ -31,6 +31,7 @@ interface RawPermissionInfo {
 /** LoginUserController 返回的登录用户结构 */
 interface RawLoginUser {
   userId?: string | number;
+  enterpriseId?: string | number;
   userName?: string;
   nickName?: string;
   avatar?: string;
@@ -42,6 +43,7 @@ interface RawLoginUser {
 function toUserInfo(data: RawLoginUser): UserInfo {
   return {
     userId: data.userId === undefined ? undefined : String(data.userId),
+    enterpriseId: data.enterpriseId === undefined ? undefined : String(data.enterpriseId),
     username: data.userName,
     nickname: data.nickName,
     avatar: data.avatar,
