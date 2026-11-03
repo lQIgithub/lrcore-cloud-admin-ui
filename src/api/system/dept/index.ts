@@ -174,6 +174,15 @@ const DeptAPI = {
       idList.map((id) => request({ url: `${DEPT_BASE_URL}/remove/${id}`, method: "delete" }))
     );
   },
+
+  /** 批量更新部门排序 */
+  updateSort(items: { id: string; sort: number }[]) {
+    return request({
+      url: `${DEPT_BASE_URL}/sort`,
+      method: "put",
+      data: { items },
+    });
+  },
 };
 
 export default DeptAPI;

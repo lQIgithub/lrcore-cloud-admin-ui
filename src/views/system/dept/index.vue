@@ -73,6 +73,7 @@
 
       <div class="page-table-wrapper">
         <el-table
+          ref="dataTableRef"
           v-loading="loading"
           :data="list"
           class="page-table"
@@ -81,6 +82,7 @@
           border
           height="100%"
           :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+          :row-class-name="getDeptRowClassName"
           @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" align="center" />
@@ -173,7 +175,14 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type TreeInstance,
+} from "element-plus";
+import Sortable, { type MoveEvent } from "sortablejs";
 import { Refresh, FullScreen } from "@element-plus/icons-vue";
 
 import DeptAPI from "@/api/system/dept";
@@ -193,6 +202,7 @@ const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
 const queryFormRef = ref<FormInstance>();
 const deptFormRef = ref<FormInstance>();
+const dataTableRef = ref<TreeInstance>();
 
 const loading = ref(false);
 const list = ref<DeptItem[]>([]);
@@ -211,6 +221,8 @@ const dialogState = reactive({
 
 const deptOptions = ref<OptionItem[]>([]);
 const enterpriseOptions = ref<OptionItem[]>([]);
+
+let deptTableSortable: Sortable | null = null;
 
 const initialFormData: DeptForm = {
   enterpriseId: undefined,
@@ -241,8 +253,118 @@ async function fetchData(): Promise<void> {
   loading.value = true;
   try {
     list.value = await DeptAPI.getList(queryParams);
+    await nextTick();
+    initDeptRowDrag();
   } finally {
     loading.value = false;
+  }
+}
+
+function getDeptRowClassName({ row }: { row: DeptItem }): string {
+  return `dept-row-${row.id}`;
+}
+
+function initDeptRowDrag(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const tbody = tableElement?.querySelector<HTMLElement>(".el-table__body tbody");
+  if (!tbody) return;
+
+  deptTableSortable?.destroy();
+  deptTableSortable = Sortable.create(tbody, {
+    animation: 160,
+    draggable: ".el-table__row",
+    onMove: allowDeptRowMove,
+    onEnd: handleDeptRowDrop,
+  });
+}
+
+function getDeptIdFromRow(element?: Element | null): string | undefined {
+  return Array.from(element?.classList ?? [])
+    .find((className) => className.startsWith("dept-row-"))
+    ?.replace("dept-row-", "");
+}
+
+function allowDeptRowMove(event: MoveEvent): boolean {
+  const draggedId = getDeptIdFromRow(event.dragged);
+  const relatedId = getDeptIdFromRow(event.related);
+  if (!draggedId || !relatedId) return false;
+
+  const draggedDept = findDeptById(list.value, draggedId);
+  const relatedDept = findDeptById(list.value, relatedId);
+  return draggedDept?.parentId === relatedDept?.parentId;
+}
+
+function findDeptById(depts: DeptItem[], deptId: string): DeptItem | undefined {
+  for (const dept of depts) {
+    if (dept.id === deptId) return dept;
+
+    const childDept = findDeptById(dept.children ?? [], deptId);
+    if (childDept) return childDept;
+  }
+  return undefined;
+}
+
+function flattenDepts(depts: DeptItem[], result: DeptItem[] = []): DeptItem[] {
+  depts.forEach((dept) => {
+    result.push(dept);
+    flattenDepts(dept.children ?? [], result);
+  });
+  return result;
+}
+
+function reorderDeptsByTableDom(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const rows = Array.from(
+    tableElement?.querySelectorAll(".el-table__body tbody .el-table__row") ?? []
+  );
+  const orderedIds = rows
+    .map((row) => getDeptIdFromRow(row))
+    .filter((id): id is string => Boolean(id));
+  if (!orderedIds.length) return;
+
+  const deptMap = new Map(
+    flattenDepts(list.value)
+      .filter((dept) => dept.id)
+      .map((dept) => [dept.id as string, dept])
+  );
+  const orderedDeptsByParent = new Map<string, DeptItem[]>();
+  orderedIds.forEach((id) => {
+    const dept = deptMap.get(id);
+    if (!dept) return;
+
+    const parentId = dept.parentId ?? "0";
+    const depts = orderedDeptsByParent.get(parentId) ?? [];
+    depts.push(dept);
+    orderedDeptsByParent.set(parentId, depts);
+  });
+
+  const reorder = (items: DeptItem[], parentId: string): DeptItem[] => {
+    const originalIds = new Set(items.map((item) => item.id));
+    const orderedItems = (orderedDeptsByParent.get(parentId) ?? []).filter((item) =>
+      item.id ? originalIds.has(item.id) : false
+    );
+
+    orderedItems.forEach((item) => {
+      if (item.children?.length) {
+        item.children = reorder(item.children, item.id as string);
+      }
+    });
+    return orderedItems;
+  };
+
+  list.value = reorder(list.value, "0");
+}
+
+async function handleDeptRowDrop(): Promise<void> {
+  reorderDeptsByTableDom();
+  const sortItems = collectSortItems(list.value);
+  if (!sortItems.length) return;
+
+  try {
+    await DeptAPI.updateSort(sortItems);
+    ElMessage.success("排序已保存");
+  } catch {
+    fetchData();
   }
 }
 
@@ -368,6 +490,20 @@ async function handleDelete(deptId?: string): Promise<void> {
 function closeDialog(): void {
   dialogState.visible = false;
   resetForm();
+}
+
+function collectSortItems(
+  depts: DeptItem[],
+  sortItems: { id: string; sort: number }[] = []
+): { id: string; sort: number }[] {
+  depts.forEach((dept, index) => {
+    if (dept.id) {
+      sortItems.push({ id: dept.id, sort: index + 1 });
+    }
+
+    collectSortItems(dept.children ?? [], sortItems);
+  });
+  return sortItems;
 }
 
 onMounted(async () => {
