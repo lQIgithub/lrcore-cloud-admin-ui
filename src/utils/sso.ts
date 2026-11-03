@@ -350,6 +350,11 @@ export const SsoStorage = {
     Storage.set(STORAGE_KEYS.SSO_REDIRECT, redirect);
   },
 
+  /** 仅校验 state 是否匹配，不消费，换码失败后回调 URL 仍可保留原始状态 */
+  hasState(state: string): boolean {
+    return Boolean(readPendingFlows()[state]);
+  },
+
   /** 校验并消费 state（一次性）；不匹配返回 false（防重放/CSRF）。
    *  注意：verifier 保留到换码完成后由 {@link clearPending} 清除 */
   verifyState(state: string): boolean {
@@ -365,6 +370,10 @@ export const SsoStorage = {
     Storage.sessionSet(STORAGE_KEYS.SSO_REDIRECT, pending.redirect);
     Storage.sessionRemove(STORAGE_KEYS.SSO_STATE);
     return true;
+  },
+
+  consumeState(state: string): boolean {
+    return this.verifyState(state);
   },
 
   getCodeVerifier(): string {
@@ -390,6 +399,12 @@ export const SsoStorage = {
     Storage.remove(STORAGE_KEYS.SSO_STATE);
     Storage.remove(STORAGE_KEYS.SSO_CODE_VERIFIER);
     Storage.remove(STORAGE_KEYS.SSO_REDIRECT);
+  },
+
+  /** 仅清理令牌，保留在途授权流程，避免并发登录态重置破坏 state */
+  clearTokens(): void {
+    Storage.remove(STORAGE_KEYS.SSO_ID_TOKEN);
+    Storage.sessionRemove(STORAGE_KEYS.SSO_ID_TOKEN);
   },
 
   /** 目标路由（回调页消费后保留到进入系统，登出时一并清理） */

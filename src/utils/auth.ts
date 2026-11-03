@@ -14,6 +14,7 @@ export const AuthStorage = {
 
   setTokens(accessToken: string, rememberMe: boolean): void {
     Storage.set(STORAGE_KEYS.REMEMBER_ME, rememberMe);
+    Storage.set(STORAGE_KEYS.ACCESS_TOKEN_ISSUED_AT, Date.now());
     if (rememberMe) {
       Storage.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
     } else {
@@ -22,9 +23,15 @@ export const AuthStorage = {
     }
   },
 
+  getAccessTokenIssuedAt(): number {
+    return Storage.get<number>(STORAGE_KEYS.ACCESS_TOKEN_ISSUED_AT, 0);
+  },
+
   clearAuth(): void {
     Storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
     Storage.sessionRemove(STORAGE_KEYS.ACCESS_TOKEN);
+    Storage.remove(STORAGE_KEYS.ACCESS_TOKEN_ISSUED_AT);
+    Storage.sessionRemove(STORAGE_KEYS.ACCESS_TOKEN_ISSUED_AT);
   },
 
   getRememberMe(): boolean {

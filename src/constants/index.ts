@@ -27,6 +27,7 @@ export const PLATFORM_TENANT_ID = 0;
 export const STORAGE_KEYS = {
   // 认证
   ACCESS_TOKEN: `${APP_PREFIX}:auth:access_token`,
+  ACCESS_TOKEN_ISSUED_AT: `${APP_PREFIX}:auth:access_token_issued_at`,
   REMEMBER_ME: `${APP_PREFIX}:auth:remember_me`,
   // 第三方登录：发起时记录平台，扫码回调页据此调用对应平台回调接口
   SOCIAL_PLATFORM: `${APP_PREFIX}:auth:social_platform`,

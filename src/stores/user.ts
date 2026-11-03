@@ -132,7 +132,7 @@ export const useUserStore = defineStore("user", () => {
    */
   function resetUserState(): void {
     AuthStorage.clearAuth();
-    SsoStorage.clearAll();
+    SsoStorage.clearTokens();
     userInfo.value = {} as UserInfo;
   }
 

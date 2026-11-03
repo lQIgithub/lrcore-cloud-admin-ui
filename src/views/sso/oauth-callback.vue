@@ -62,7 +62,7 @@ async function handleCallback() {
   }
 
   // state 一次性校验（不匹配 = 重放/跨会话回调，直接拒绝）
-  if (!SsoStorage.verifyState(state)) {
+  if (!SsoStorage.hasState(state)) {
     phase.value = "error";
     errorMessage.value = "登录状态校验失败（state 不匹配），请重新发起单点登录";
     return;
@@ -71,12 +71,11 @@ async function handleCallback() {
   try {
     const tokens = await exchangeCodeForTokens(code);
     await useUserStoreHook().applySsoLogin(tokens.accessToken, tokens.idToken);
-    SsoStorage.clearPending();
     const target = SsoStorage.getRedirect() || "/";
-    SsoStorage.clearRedirect();
+    SsoStorage.consumeState(state);
+    SsoStorage.clearPending();
     router.replace(target);
   } catch (error) {
-    SsoStorage.clearPending();
     phase.value = "error";
     errorMessage.value =
       error instanceof Error && error.message ? error.message : "单点登录失败，请返回重试";

@@ -61,9 +61,13 @@ http.interceptors.response.use(
       // SAS（公共客户端）无 refresh_token，401 直接静默再授权，失败/非 SAS 才重定向登录页
       if (code === "401") {
         const userStore = useUserStoreHook();
-        if (userStore.isSas()) {
+        const tokenAge = Date.now() - AuthStorage.getAccessTokenIssuedAt();
+        if (userStore.isSas() && tokenAge > 60_000) {
           await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
           return Promise.reject(new Error("Token Invalid (sso reauth)"));
+        }
+        if (userStore.isSas()) {
+          ElMessage.error("登录令牌校验失败，请重新登录");
         }
         // 无本地令牌：若已有一笔 SSO 授权流程在途（守卫自动登录/登录页按钮发起，
         // 页面即将整页跳转授权服务器），不要再 redirectToLogin —— 它内部会
@@ -99,11 +103,15 @@ http.interceptors.response.use(
     // Token 过期
     if (code === ApiCodeEnum.ACCESS_TOKEN_INVALID) {
       const userStore = useUserStoreHook();
+      const tokenAge = Date.now() - AuthStorage.getAccessTokenIssuedAt();
 
       // SAS 新轨（公共客户端）无 refresh_token：401 直接静默再授权（整页跳转，不返回）
-      if (userStore.isSas()) {
+      if (userStore.isSas() && tokenAge > 60_000) {
         await userStore.silentSsoReauth(router.currentRoute.value.fullPath);
         return Promise.reject(new Error("Token Invalid (sso reauth)"));
+      }
+      if (userStore.isSas()) {
+        ElMessage.error("登录令牌校验失败，请重新登录");
       }
 
       // 同 success-form 401 分支：SSO 流程在途时不 redirectToLogin（避免清空暂存 state）

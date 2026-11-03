@@ -103,7 +103,7 @@ const canReturnPortal = computed(() => !!appConfig.portalUrl?.trim());
  */
 function handlePortalClick() {
   if (!appConfig.portalUrl) return;
-  window.open(appConfig.portalUrl, "_blank", "noopener");
+  window.location.href = appConfig.portalUrl;
 }
 
 function handleTenantChange(tenantId: number) {
