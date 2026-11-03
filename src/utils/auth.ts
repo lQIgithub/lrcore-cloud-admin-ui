@@ -73,9 +73,8 @@ export async function redirectToLogin(
   redirectingToLogin = true;
 
   if (notify) {
-    ElNotification({
-      title: "提示",
-      message,
+    ElMessage({
+      message: `提示：${message}`,
       type: "warning",
       duration: 3000,
     });

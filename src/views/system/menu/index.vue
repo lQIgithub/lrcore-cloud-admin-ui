@@ -445,6 +445,7 @@ import { CommonStatus, MenuScopeEnum, MenuTypeEnum } from "@/enums";
 import { DeviceEnum } from "@/enums/settings";
 import { isTenantEnabled } from "@/utils/tenant";
 import { isValidURL } from "@/utils";
+import { showApiNotification } from "@/utils/message";
 
 defineOptions({
   name: "SysMenu",
@@ -777,7 +778,7 @@ async function handleMenuRowDrop(): Promise<void> {
 
   try {
     await MenuAPI.updateSort(sortItems);
-    ElMessage.success("排序已保存");
+    showApiNotification("排序已保存", "success");
   } catch {
     fetchData();
   }

@@ -276,6 +276,10 @@
   }
 }
 
+.api-message-list > div + div {
+  margin-top: 4px;
+}
+
 .el-dialog {
   overflow: hidden;
   border-radius: 8px;

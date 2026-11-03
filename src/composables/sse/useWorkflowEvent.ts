@@ -68,11 +68,11 @@ function createWorkflowEventComposable() {
     pushHistory(taskEvents, data);
     if (data.type === "created" || data.type === "assigned") {
       unreadTaskCount.value += 1;
-      ElNotification({
-        title: "新的待办任务",
-        message: data.taskName ? `待办任务「${data.taskName}」已到达` : "您有一条新的待办任务",
+      ElMessage({
+        message: data.taskName
+          ? `新的待办任务：「${data.taskName}」已到达`
+          : "您有一条新的待办任务",
         type: "success",
-        position: "bottom-right",
       });
     }
     notifyHandlers(data);
@@ -82,11 +82,9 @@ function createWorkflowEventComposable() {
     if (!data?.processInstanceId) return;
     pushHistory(instanceEvents, data);
     if (data.type === "completed" || data.type === "cancelled") {
-      ElNotification({
-        title: data.type === "completed" ? "流程已完成" : "流程已终止",
-        message: `流程实例 ${data.processInstanceId} ${data.type === "completed" ? "已完成" : "已被终止"}`,
+      ElMessage({
+        message: `${data.type === "completed" ? "流程已完成" : "流程已终止"}：流程实例 ${data.processInstanceId}`,
         type: data.type === "completed" ? "info" : "warning",
-        position: "bottom-right",
       });
     }
     notifyHandlers(data);

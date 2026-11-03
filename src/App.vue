@@ -1,5 +1,5 @@
 <template>
-  <el-config-provider :locale="locale" :size="size">
+  <el-config-provider :locale="locale" :size="size" :message="messageConfig">
     <el-watermark
       :font="{ color: fontColor }"
       :content="showWatermark ? watermarkContent : ''"
@@ -15,12 +15,20 @@
 import { useAppStore, useSettingsStore } from "@/stores";
 import { appConfig } from "@/settings";
 import { ThemeMode, ComponentSize } from "@/enums";
+import type { MessageConfigContext } from "element-plus";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();
 
 const locale = computed(() => appStore.locale);
 const size = computed(() => appStore.size as ComponentSize);
+const messageConfig: MessageConfigContext = {
+  placement: "bottom-right",
+  duration: 5000,
+  grouping: true,
+  showClose: true,
+  offset: 16,
+};
 const showWatermark = computed(() => settingsStore.showWatermark);
 const watermarkContent = appConfig.name;
 

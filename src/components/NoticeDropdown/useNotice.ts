@@ -129,11 +129,9 @@ export function useNotice() {
           list.value.length = PAGE_SIZE;
         }
 
-        ElNotification({
-          title: "您收到一条新的通知消息！",
-          message: data.title,
+        ElMessage({
+          message: `您收到一条新的通知消息：${data.title}`,
           type: "success",
-          position: "bottom-right",
         });
       } catch (e) {
         console.error("解析通知消息失败", e);

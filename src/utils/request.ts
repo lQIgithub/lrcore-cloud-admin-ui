@@ -7,6 +7,7 @@ import { useUserStoreHook } from "@/stores/user";
 import { usePermissionStoreHook } from "@/stores/permission";
 import { AuthStorage, redirectToLogin } from "@/utils/auth";
 import { isSsoFlowStarted } from "@/utils/sso";
+import { showApiNotification } from "@/utils/message";
 import { decryptResponseData, encryptRequestData } from "@/utils";
 import type { ApiResult } from "@/api/common";
 
@@ -67,7 +68,7 @@ http.interceptors.response.use(
           return Promise.reject(new Error("Token Invalid (sso reauth)"));
         }
         if (userStore.isSas()) {
-          ElMessage.error("登录令牌校验失败，请重新登录");
+          showApiNotification("登录令牌校验失败，请重新登录");
         }
         // 无本地令牌：若已有一笔 SSO 授权流程在途（守卫自动登录/登录页按钮发起，
         // 页面即将整页跳转授权服务器），不要再 redirectToLogin —— 它内部会
@@ -79,7 +80,7 @@ http.interceptors.response.use(
         await redirectToLogin("登录状态已过期，请重新登录");
         return Promise.reject(new Error("Token Invalid"));
       }
-      ElMessage.error(message || "系统出错");
+      showApiNotification(message || "系统出错");
       return Promise.reject(new Error(message || "系统出错"));
     }
     // if (!needEncrypt) {
@@ -87,6 +88,10 @@ http.interceptors.response.use(
     //   console.debug("后端返回解密内容解密后的数据:", decryptedData);
     //   return decryptedData;
     // }
+    const requestMethod = response.config.method?.toLowerCase();
+    if (requestMethod && requestMethod !== "get" && message) {
+      showApiNotification(message, "success");
+    }
     return data;
   },
 
@@ -94,7 +99,7 @@ http.interceptors.response.use(
     const { response } = error;
 
     if (!response) {
-      ElMessage.error("网络连接失败");
+      showApiNotification("网络连接失败");
       return Promise.reject(error);
     }
 
@@ -111,7 +116,7 @@ http.interceptors.response.use(
         return Promise.reject(new Error("Token Invalid (sso reauth)"));
       }
       if (userStore.isSas()) {
-        ElMessage.error("登录令牌校验失败，请重新登录");
+        showApiNotification("登录令牌校验失败，请重新登录");
       }
 
       // 同 success-form 401 分支：SSO 流程在途时不 redirectToLogin（避免清空暂存 state）
@@ -127,11 +132,11 @@ http.interceptors.response.use(
     if (code === ApiCodeEnum.PERMISSION_DENIED) {
       const permissionStore = usePermissionStoreHook();
       await permissionStore.refreshPermissions();
-      ElMessage.error(message || "权限不足");
+      showApiNotification(message || "权限不足");
       return Promise.reject(new Error(message || "权限不足"));
     }
 
-    ElMessage.error(message || "请求失败");
+    showApiNotification(message || "请求失败");
     return Promise.reject(new Error(message || "请求失败"));
   }
 );
