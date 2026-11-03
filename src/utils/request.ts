@@ -88,10 +88,6 @@ http.interceptors.response.use(
     //   console.debug("后端返回解密内容解密后的数据:", decryptedData);
     //   return decryptedData;
     // }
-    const requestMethod = response.config.method?.toLowerCase();
-    if (requestMethod && requestMethod !== "get" && message) {
-      showApiNotification(message, "success");
-    }
     return data;
   },
 
