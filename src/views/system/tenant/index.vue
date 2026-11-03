@@ -33,16 +33,18 @@
 
       <div class="page-table-wrapper">
         <el-table
+          ref="dataTableRef"
+          :key="tenantTableKey"
           v-loading="loading"
           :data="list"
           class="page-table"
           border
           height="100%"
           highlight-current-row
+          :row-class-name="getRowClassName"
           @selection-change="handleSelectionChange"
         >
           <el-table-column type="selection" width="55" align="center" />
-          <el-table-column type="index" label="序号" width="60" />
           <el-table-column label="租户名称" prop="name" min-width="160" />
           <el-table-column label="租户编码" prop="code" min-width="120" />
           <el-table-column
@@ -51,6 +53,7 @@
             min-width="200"
             show-overflow-tooltip
           />
+          <el-table-column align="center" label="排序" prop="sort" width="80" />
           <el-table-column align="center" label="状态" width="90">
             <template #default="scope">
               <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
@@ -120,7 +123,14 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import Sortable, { type SortableEvent } from "sortablejs";
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules,
+  type TableInstance,
+} from "element-plus";
 
 import TenantManagementAPI from "@/api/system/tenant-simple";
 import type { TenantForm, TenantItem, TenantQueryParams } from "@/api/system/tenant-simple";
@@ -131,6 +141,9 @@ defineOptions({ name: "TenantManagement", inheritAttrs: false });
 
 const queryFormRef = ref<FormInstance>();
 const tenantFormRef = ref<FormInstance>();
+const dataTableRef = ref<TableInstance>();
+let tenantTableSortable: Sortable | null = null;
+const tenantTableKey = ref(0);
 
 const { loading, list, total, params, fetchData, handleQuery, handleResetQuery } = usePageTable<
   TenantItem,
@@ -239,5 +252,74 @@ function handleBatchDelete(): void {
 
 onMounted(() => {
   handleQuery();
+  initTenantRowDrag();
 });
+
+onBeforeUnmount(() => {
+  tenantTableSortable?.destroy();
+});
+
+function getRowClassName({ row }: { row: TenantItem }): string {
+  return `tenant-row-${row.id}`;
+}
+
+function initTenantRowDrag(): void {
+  const tableElement = dataTableRef.value?.$el as HTMLElement | undefined;
+  const tbody = tableElement?.querySelector<HTMLElement>(".el-table__body tbody");
+  if (!tbody) return;
+
+  tenantTableSortable?.destroy();
+  tenantTableSortable = Sortable.create(tbody, {
+    animation: 160,
+    draggable: ".el-table__row",
+    onEnd: handleTenantRowDrop,
+  });
+}
+
+async function handleTenantRowDrop(event: SortableEvent): Promise<void> {
+  const oldIndex = event.oldIndex;
+  const newIndex = event.newIndex;
+  if (oldIndex === undefined || newIndex === undefined) return;
+  if (oldIndex === newIndex || oldIndex >= list.value.length || newIndex >= list.value.length) {
+    return;
+  }
+
+  const reorderedList = [...list.value];
+  const [draggedItem] = reorderedList.splice(oldIndex, 1);
+  reorderedList.splice(newIndex, 0, draggedItem);
+  list.value = reorderedList;
+
+  const sortBase = (params.pageNum - 1) * params.pageSize;
+  const sortItems = reorderedList
+    .filter((item): item is TenantItem & { id: string } => Boolean(item.id))
+    .map((item, index) => ({
+      id: item.id,
+      sort: sortBase + index + 1,
+    }));
+
+  try {
+    await TenantManagementAPI.updateSort(sortItems);
+    await refreshTenantTable();
+    ElMessage.success("排序已保存");
+  } catch {
+    await refreshTenantTable();
+  }
+}
+
+async function refreshTenantTable(): Promise<void> {
+  tenantTableKey.value++;
+  await fetchData();
+  await nextTick();
+  initTenantRowDrag();
+}
 </script>
+
+<style scoped>
+.el-table .el-table__row {
+  cursor: grab;
+}
+
+.el-table .el-table__row:active {
+  cursor: grabbing;
+}
+</style>

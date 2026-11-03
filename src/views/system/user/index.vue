@@ -141,6 +141,12 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
+            <el-table-column
+              label="企业"
+              min-width="140"
+              prop="enterpriseName"
+              show-overflow-tooltip
+            />
             <el-table-column label="部门" min-width="140" prop="deptName" show-overflow-tooltip />
             <el-table-column label="角色" prop="roleNames" min-width="160" show-overflow-tooltip />
             <el-table-column label="手机号码" prop="mobile" width="130" />

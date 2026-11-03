@@ -44,6 +44,8 @@ export interface UserItem {
   avatar?: string;
   /** 创建时间 */
   createTime?: Date;
+  /** 企业名称 */
+  enterpriseName?: string;
   /** 部门名称 */
   deptName?: string;
   /** 用户邮箱 */

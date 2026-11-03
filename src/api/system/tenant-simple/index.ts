@@ -27,6 +27,14 @@ const TenantManagementAPI = {
   deleteByIds(ids: string) {
     return request({ url: `${TENANT_BASE_URL}/${ids}`, method: "delete" });
   },
+  /** 批量更新租户排序 */
+  updateSort(items: { id: string; sort: number }[]) {
+    return request({
+      url: `${TENANT_BASE_URL}/sort`,
+      method: "put",
+      data: { items },
+    });
+  },
 };
 
 export default TenantManagementAPI;

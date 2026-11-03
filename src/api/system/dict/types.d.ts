@@ -11,6 +11,8 @@ export interface DictTypeQueryParams extends BaseQueryParams {
   keywords?: string;
   /** 状态(1:启用;0:禁用) */
   status?: number;
+  /** 应用ID（0表示平台级字典） */
+  appId?: string;
 }
 
 /** 字典分页对象 */
@@ -21,6 +23,8 @@ export interface DictTypeItem {
   name: string;
   /** 字典编码 */
   dictCode: string;
+  /** 应用ID（0表示平台级字典） */
+  appId?: string;
   /** 状态(1:启用;0:禁用) */
   status: number;
 }
@@ -33,6 +37,8 @@ export interface DictTypeForm {
   name?: string;
   /** 字典编码 */
   dictCode?: string;
+  /** 应用ID（0表示平台级字典） */
+  appId?: string;
   /** 状态(1:启用;0:禁用) */
   status?: number;
   /** 备注 */

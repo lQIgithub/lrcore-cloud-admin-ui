@@ -1,100 +1,153 @@
 ﻿<template>
-  <div class="page-container">
-    <el-card class="page-search" shadow="never">
-      <el-form ref="queryFormRef" :model="params" :inline="true">
-        <el-form-item label="关键字" prop="keywords">
+  <div class="page-container page-container--split">
+    <aside class="page-aside" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <div class="page-aside__inner">
+        <el-card class="dict-scope-card" shadow="never">
           <el-input
-            v-model="params.keywords"
-            placeholder="字典名称/编码"
+            v-model="scopeKeyword"
+            class="dict-scope-card__search"
+            placeholder="搜索应用"
             clearable
-            @keyup.enter="handleQuery"
+            :prefix-icon="Search"
           />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">搜索</el-button>
-          <el-button @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card ref="tableWrapperRef" class="page-content" shadow="never">
-      <div class="page-toolbar">
-        <div class="page-toolbar__left">
-          <el-button type="primary" @click="handleCreateClick()">新增</el-button>
-          <el-button type="danger" :disabled="!hasSelection" @click="handleDelete()">
-            删除
-          </el-button>
-        </div>
-        <div class="page-toolbar__right">
-          <el-tooltip content="刷新" placement="top">
-            <el-button class="page-icon-btn" @click="fetchData">
-              <el-icon><Refresh /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="全屏" placement="top">
-            <el-button class="page-icon-btn" @click="toggleFullscreen">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
+          <div class="dict-scope-card__body">
+            <el-tree
+              ref="scopeTreeRef"
+              :data="scopeOptions"
+              :props="{ label: 'label', children: 'children' }"
+              default-expand-all
+              :expand-on-click-node="false"
+              :filter-node-method="filterScopeNode"
+              highlight-current
+              node-key="value"
+              @node-click="handleScopeNodeClick"
+            >
+              <template #default="{ data }">
+                <el-tooltip
+                  placement="right"
+                  :show-after="300"
+                  :hide-after="0"
+                  :content="getScopeTooltip(data as ScopeOption)"
+                >
+                  <span>{{ data.label }}</span>
+                </el-tooltip>
+              </template>
+            </el-tree>
+          </div>
+        </el-card>
       </div>
+      <button class="page-aside__toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+        <el-icon :size="14">
+          <ArrowLeft v-if="!sidebarCollapsed" />
+          <ArrowRight v-else />
+        </el-icon>
+      </button>
+    </aside>
 
-      <div class="page-table-wrapper">
-        <el-table
-          v-loading="loading"
-          highlight-current-row
-          :data="list"
-          class="page-table"
-          border
-          height="100%"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" align="center" />
-          <el-table-column label="字典名称" prop="name" />
-          <el-table-column label="字典编码" prop="dictCode" />
-          <el-table-column label="状态" prop="status">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
-                {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column fixed="right" label="操作" align="center" width="220">
-            <template #default="scope">
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click.stop="openDictData(scope.row as any)"
-              >
-                字典数据
-              </el-button>
+    <div class="page-main">
+      <el-card class="page-search" shadow="never">
+        <el-form ref="queryFormRef" :model="params" :inline="true">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="params.keywords"
+              placeholder="字典名称/编码"
+              clearable
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
 
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click.stop="handleEditClick(scope.row.id)"
-              >
-                编辑
-              </el-button>
-              <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">搜索</el-button>
+            <el-button @click="handleResetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="params.pageNum"
-        v-model:limit="params.pageSize"
-        @pagination="fetchData"
-      />
-    </el-card>
+      <el-card ref="tableWrapperRef" class="page-content" shadow="never">
+        <div class="page-toolbar">
+          <div class="page-toolbar__left">
+            <el-button type="primary" @click="handleCreateClick()">新增</el-button>
+            <el-button type="danger" :disabled="!hasSelection" @click="handleDelete()">
+              删除
+            </el-button>
+          </div>
+          <div class="page-toolbar__right">
+            <el-tooltip content="刷新" placement="top">
+              <el-button class="page-icon-btn" @click="fetchData">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="全屏" placement="top">
+              <el-button class="page-icon-btn" @click="toggleFullscreen">
+                <el-icon><FullScreen /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="page-table-wrapper">
+          <el-table
+            v-loading="loading"
+            highlight-current-row
+            :data="list"
+            class="page-table"
+            border
+            height="100%"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column label="字典名称" prop="name" />
+            <el-table-column label="字典编码" prop="dictCode" />
+            <el-table-column align="center" label="字典级别" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.appId === '0' ? 'success' : 'primary'">
+                  {{ getDictLevelLabel(scope.row.appId) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" prop="status">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
+                  {{ scope.row.status === CommonStatus.ENABLED ? "启用" : "禁用" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column fixed="right" label="操作" align="center" width="220">
+              <template #default="scope">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="openDictData(scope.row as any)"
+                >
+                  字典数据
+                </el-button>
+
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="handleEditClick(scope.row.id)"
+                >
+                  编辑
+                </el-button>
+                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="params.pageNum"
+          v-model:limit="params.pageSize"
+          @pagination="fetchData"
+        />
+      </el-card>
+    </div>
 
     <el-dialog
       v-model="dialogState.visible"
@@ -135,10 +188,18 @@
 
 <script setup lang="ts">
 import { useFullscreen } from "@vueuse/core";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { Refresh } from "@element-plus/icons-vue";
+import {
+  ElMessage,
+  ElMessageBox,
+  type ElTree,
+  type FormInstance,
+  type FormRules,
+} from "element-plus";
+import { ArrowLeft, ArrowRight, Refresh, Search } from "@element-plus/icons-vue";
 
+import AppAPI from "@/api/system/app";
 import DictAPI from "@/api/system/dict";
+import type { OptionItem } from "@/api/common";
 import type { DictTypeForm, DictTypeItem, DictTypeQueryParams } from "@/api/system/dict";
 import router from "@/router";
 import { usePageTable, useTableSelection } from "@/composables";
@@ -152,6 +213,17 @@ defineOptions({
 const tableWrapperRef = ref<HTMLElement | null>(null);
 const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 
+type ScopeOption = OptionItem & {
+  code: string;
+  description?: string;
+};
+
+const scopeOptions = ref<ScopeOption[]>([]);
+const scopeTreeRef = ref<InstanceType<typeof ElTree>>();
+const scopeKeyword = ref("");
+const sidebarCollapsed = ref(false);
+const currentAppId = ref("0");
+
 const queryFormRef = ref<FormInstance>();
 const dictFormRef = ref<FormInstance>();
 
@@ -163,6 +235,7 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   initialParams: {
     pageNum: 1,
     pageSize: 10,
+    appId: currentAppId.value,
     keywords: "",
   },
   request: DictAPI.getPage,
@@ -177,8 +250,59 @@ const dialogState = reactive({
 });
 
 const initialFormData: DictTypeForm = {
+  appId: currentAppId.value,
   status: CommonStatus.ENABLED,
 };
+
+function filterScopeNode(value: string, data: { label?: string }): boolean {
+  return (data.label ?? "").toLowerCase().includes(value.trim().toLowerCase());
+}
+
+function getScopeTooltip(scope: ScopeOption): string {
+  const lines = [`编码：${scope.code}`];
+  if (scope.description) {
+    lines.push(`描述：${scope.description}`);
+  }
+  return lines.join("\n");
+}
+
+function getDictLevelLabel(appId?: string): string {
+  return appId === "0" ? "平台级" : "应用级";
+}
+
+watch(scopeKeyword, (keyword) => scopeTreeRef.value?.filter(keyword));
+
+async function handleScopeNodeClick(node: ScopeOption): Promise<void> {
+  if (node.value == null) return;
+
+  currentAppId.value = node.value.toString();
+  params.appId = currentAppId.value;
+  handleQuery();
+}
+
+async function loadScopeOptions(): Promise<void> {
+  const apps = await AppAPI.getPage({
+    pageNum: 1,
+    pageSize: 1000,
+    status: CommonStatus.ENABLED,
+  });
+
+  scopeOptions.value = [
+    {
+      value: "0",
+      label: "平台字典",
+      code: "PLATFORM",
+      description: "平台级内置字典",
+    },
+    ...(apps.list ?? []).map((app) => ({
+      value: app.id,
+      label: app.name,
+      code: app.code,
+      description: app.description,
+    })),
+  ];
+  nextTick(() => scopeTreeRef.value?.setCurrentKey(currentAppId.value));
+}
 
 const formData = reactive<DictTypeForm>({ ...initialFormData });
 
@@ -216,6 +340,7 @@ function closeDialog(): void {
  */
 function handleCreateClick(): void {
   resetForm();
+  formData.appId = currentAppId.value;
   dialogState.title = "新增字典";
   openDialog();
 }
@@ -318,6 +443,52 @@ function openDictData(row: DictTypeItem): void {
 }
 
 onMounted(() => {
+  loadScopeOptions();
   handleQuery();
 });
 </script>
+
+<style lang="scss" scoped>
+.dict-scope-card {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+
+  :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+  }
+
+  &__search {
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: auto;
+  }
+
+  :deep(.el-tree-node__content) {
+    height: 36px;
+    padding-right: 6px;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+  }
+
+  :deep(.el-tree-node__content:hover) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    font-weight: 600;
+    color: var(--el-color-primary);
+    background-color: var(--el-color-primary-light-9);
+  }
+}
+</style>
