@@ -305,20 +305,48 @@
         </div>
       </div>
 
-      <el-tree
-        ref="permTreeRef"
-        node-key="value"
-        show-checkbox
-        :data="menuPermOptions"
-        :filter-node-method="handlePermFilter"
-        :default-expand-all="true"
-        :check-strictly="!parentChildLinked"
-        class="mt-5"
-      >
-        <template #default="{ data }">
-          {{ data.label }}
-        </template>
-      </el-tree>
+      <el-tabs v-model="permActiveTab" class="mt-2">
+        <el-tab-pane label="菜单/按钮权限" name="menu">
+          <el-tree
+            ref="permTreeRef"
+            :key="`menu-${checkedRole.id}`"
+            node-key="value"
+            show-checkbox
+            :data="menuPermOptions"
+            :default-checked-keys="menuCheckedKeys"
+            :filter-node-method="handlePermFilter"
+            :default-expand-all="true"
+            :check-strictly="!parentChildLinked"
+          >
+            <template #default="{ data }">
+              {{ data.label }}
+              <span v-if="data.perm" class="ml-1 text-xs color-[--el-text-color-secondary]">
+                [{{ data.perm }}]
+              </span>
+            </template>
+          </el-tree>
+        </el-tab-pane>
+        <el-tab-pane label="接口权限" name="api">
+          <el-tree
+            ref="apiPermTreeRef"
+            :key="`api-${checkedRole.id}`"
+            node-key="value"
+            show-checkbox
+            :data="apiPermOptions"
+            :default-checked-keys="apiCheckedKeys"
+            :filter-node-method="handlePermFilter"
+            :default-expand-all="true"
+            :check-strictly="!parentChildLinked"
+          >
+            <template #default="{ data }">
+              {{ data.label }}
+              <span v-if="data.perm" class="ml-1 text-xs color-[--el-text-color-secondary]">
+                [{{ data.perm }}]
+              </span>
+            </template>
+          </el-tree>
+        </el-tab-pane>
+      </el-tabs>
       <template #footer>
         <div class="dialog-footer">
           <el-button v-hasPerm="'sys:role:assign'" type="primary" @click="handleAssignPermSubmit">
@@ -505,6 +533,11 @@ interface CheckedRole {
 const checkedRole = ref<CheckedRole>({});
 const assignPermDialogVisible = ref(false);
 const menuPermOptions = ref<OptionItem[]>([]);
+const apiPermOptions = ref<OptionItem[]>([]);
+const menuCheckedKeys = ref<string[]>([]);
+const apiCheckedKeys = ref<string[]>([]);
+const apiPermTreeRef = ref<TreeInstance>();
+const permActiveTab = ref("menu");
 const permKeywords = ref("");
 const isExpanded = ref(true);
 const parentChildLinked = ref(true);
@@ -677,20 +710,24 @@ async function handleAssignPermClick(row: RoleItem): Promise<void> {
 
   loading.value = true;
   try {
-    const [menuOptions, checkedMenuIds] = await Promise.all([
-      MenuAPI.getOptions(),
+    const [menuOptions, apiOptions, checkedMenuIds] = await Promise.all([
+      MenuAPI.getPermOptions(false),
+      MenuAPI.getPermOptions(true),
       RoleAPI.getRoleMenuIds(roleId),
     ]);
 
+    const checkedIdSet = new Set(checkedMenuIds);
     menuPermOptions.value = menuOptions;
-    await nextTick();
-
-    checkedMenuIds.forEach((menuId) => {
-      permTreeRef.value?.setChecked(menuId, true, false);
-    });
+    apiPermOptions.value = apiOptions;
+    menuCheckedKeys.value = collectOptionIds(menuOptions).filter((id) => checkedIdSet.has(id));
+    apiCheckedKeys.value = collectOptionIds(apiOptions).filter((id) => checkedIdSet.has(id));
   } finally {
     loading.value = false;
   }
+}
+
+function collectOptionIds(options: OptionItem[]): string[] {
+  return options.flatMap((item) => [String(item.value), ...collectOptionIds(item.children ?? [])]);
 }
 
 /**
@@ -700,9 +737,13 @@ async function handleAssignPermSubmit(): Promise<void> {
   const roleId = checkedRole.value.id;
   if (!roleId) return;
 
-  const checkedMenuIds = (permTreeRef.value?.getCheckedNodes(false, true) ?? [])
-    .map((node: TreeNodeData) => Number(node.value))
-    .filter((value: number) => !Number.isNaN(value));
+  const checkedNodes = [
+    ...(permTreeRef.value?.getCheckedNodes(false, true) ?? []),
+    ...(apiPermTreeRef.value?.getCheckedNodes(false, true) ?? []),
+  ];
+  const checkedMenuIds = Array.from(
+    new Set(checkedNodes.map((node: TreeNodeData) => String(node.value)))
+  );
 
   loading.value = true;
   try {
@@ -720,9 +761,10 @@ async function handleAssignPermSubmit(): Promise<void> {
  */
 function togglePermTree(): void {
   isExpanded.value = !isExpanded.value;
-  if (!permTreeRef.value) return;
+  const activeTree = permActiveTab.value === "api" ? apiPermTreeRef.value : permTreeRef.value;
+  if (!activeTree) return;
 
-  Object.values(permTreeRef.value.store.nodesMap).forEach((node) => {
+  Object.values(activeTree.store.nodesMap).forEach((node) => {
     const treeNode = node as ToggleableTreeNode;
     if (isExpanded.value) {
       treeNode.expand();
@@ -752,6 +794,7 @@ function handleParentChildLinkedChange(value: string | number | boolean): void {
 
 watch(permKeywords, (value) => {
   permTreeRef.value?.filter(value);
+  apiPermTreeRef.value?.filter(value);
 });
 
 onMounted(async () => {

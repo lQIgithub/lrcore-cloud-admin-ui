@@ -48,6 +48,8 @@ export interface OptionItem {
   value: string | number;
   /** 选项标签 */
   label: string;
+  /** 权限标识 */
+  perm?: string;
   /** 子选项 */
   children?: OptionItem[];
 }

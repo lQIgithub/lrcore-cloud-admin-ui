@@ -44,6 +44,33 @@ interface RawAppNode {
 
 const enabledAppsPromise = new Map<MenuScopeEnum | undefined, Promise<string | undefined>>();
 
+/** 将菜单树收敛为只保留满足条件的节点及其祖先链 */
+function pruneMenuTree(items: MenuItem[], keep: (item: MenuItem) => boolean): MenuItem[] {
+  const tree = buildMenuTree(items);
+
+  const prune = (nodes: MenuItem[]): MenuItem[] =>
+    nodes.flatMap((item): MenuItem[] => {
+      const children = prune(item.children ?? []);
+      if (keep(item) || children.length > 0) {
+        return [{ ...item, children: children.length > 0 ? children : undefined }];
+      }
+      return [];
+    });
+
+  return prune(tree);
+}
+
+/** 菜单树转下拉选项树 */
+function toMenuOptionTree(items: MenuItem[]): OptionItem[] {
+  const toOption = (item: MenuItem): OptionItem => ({
+    value: String(item.id),
+    label: item.name ?? "",
+    perm: item.perm,
+    children: item.children?.map(toOption),
+  });
+  return items.map(toOption);
+}
+
 function toFrontendType(type?: number | string): MenuTypeEnum {
   if (type === "DIRECTORY") return MenuTypeEnum.CATALOG;
   if (type === "MENU") return MenuTypeEnum.MENU;
@@ -237,10 +264,25 @@ const MenuAPI = {
         return {
           value: String(item.id),
           label: item.name ?? "",
+          perm: item.perm,
           children: item.children?.map(toOption),
         };
       });
     });
+  },
+  /**
+   * 获取权限分配下拉数据源
+   *
+   * @param interfaceOnly true-仅接口权限(type=3)；false-菜单和按钮权限(type=0/1/2)
+   */
+  getPermOptions(interfaceOnly?: boolean) {
+    return getRawMenus().then((items) =>
+      toMenuOptionTree(
+        pruneMenuTree(items, (item) =>
+          interfaceOnly ? item.type === MenuTypeEnum.EXTERNAL : item.type !== MenuTypeEnum.EXTERNAL
+        )
+      )
+    );
   },
   /** 获取菜单表单数据 */
   getFormData(id: string) {

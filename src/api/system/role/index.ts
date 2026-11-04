@@ -29,7 +29,7 @@ const RoleAPI = {
     });
   },
   /** 分配菜单权限 */
-  updateRoleMenus(roleId: string, data: number[]) {
+  updateRoleMenus(roleId: string, data: string[]) {
     return request({
       url: SYSTEM_BASE_PREFIX + `${ROLE_BASE_URL}/${roleId}/menus`,
       method: "put",
