@@ -25,6 +25,8 @@ export interface DictTypeItem {
   dictCode: string;
   /** 应用ID（0表示平台级字典） */
   appId?: string;
+  /** 租户ID */
+  tenantId?: string;
   /** 状态(1:启用;0:禁用) */
   status: number;
 }
@@ -39,6 +41,8 @@ export interface DictTypeForm {
   dictCode?: string;
   /** 应用ID（0表示平台级字典） */
   appId?: string;
+  /** 租户ID */
+  tenantId?: string;
   /** 状态(1:启用;0:禁用) */
   status?: number;
   /** 备注 */

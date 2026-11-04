@@ -483,6 +483,14 @@ const selectionData = ref<IObject[]>([]);
 // 删除ID集合 用于批量删除
 const removeIds = ref<(number | string)[]>([]);
 function handleSelectionChange(selection: any[]) {
+  if (selection.some((item) => item.buildIn === 1)) {
+    ElMessage.warning("系统内置数据不允许操作");
+    tableRef.value?.clearSelection();
+    selectionData.value = [];
+    removeIds.value = [];
+    return;
+  }
+
   selectionData.value = selection;
   removeIds.value = selection.map((item) => item[pk]);
 }

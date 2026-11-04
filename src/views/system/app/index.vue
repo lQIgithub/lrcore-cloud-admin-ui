@@ -78,6 +78,7 @@
 
         <div class="page-table-wrapper">
           <el-table
+            ref="dataTableRef"
             v-loading="loading"
             :data="list"
             class="page-table"
@@ -111,7 +112,12 @@
                 <el-button type="primary" size="small" link @click="openDialog(scope.row.id)">
                   编辑
                 </el-button>
-                <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                <el-button
+                  type="danger"
+                  size="small"
+                  link
+                  @click="handleDelete(scope.row as AppItem)"
+                >
                   删除
                 </el-button>
               </template>
@@ -205,6 +211,7 @@ defineOptions({ name: "AppManagement", inheritAttrs: false });
 
 const queryFormRef = ref<FormInstance>();
 const appFormRef = ref<FormInstance>();
+const dataTableRef = ref<unknown>();
 const sidebarCollapsed = ref(false);
 type TenantOption = OptionItem & {
   code: string;
@@ -228,7 +235,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<AppItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<AppItem>(dataTableRef);
 
 const dialogState = reactive({ title: "", visible: false });
 
@@ -318,7 +326,13 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-async function handleDelete(id: string): Promise<void> {
+async function handleDelete(row?: AppItem): Promise<void> {
+  const id = row?.id;
+  if (!id) {
+    ElMessage.warning("请勾选删除项");
+    return;
+  }
+
   try {
     await ElMessageBox.confirm("确认删除选中的应用吗？", "警告", {
       confirmButtonText: "确定",
@@ -327,6 +341,11 @@ async function handleDelete(id: string): Promise<void> {
     });
   } catch {
     ElMessage.info("已取消删除");
+    return;
+  }
+
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
     return;
   }
 
@@ -341,8 +360,7 @@ async function handleDelete(id: string): Promise<void> {
 }
 
 function handleBatchDelete(): void {
-  const ids = selectedIds.value.join(",");
-  if (ids) handleDelete(ids);
+  if (selectedIds.value.length) handleDelete();
 }
 
 onMounted(async () => {

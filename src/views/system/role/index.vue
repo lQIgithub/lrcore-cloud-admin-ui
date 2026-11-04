@@ -165,7 +165,12 @@
                   >
                     编辑
                   </el-button>
-                  <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    link
+                    @click="handleDelete(scope.row as RoleItem)"
+                  >
                     删除
                   </el-button>
                 </div>
@@ -419,7 +424,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<RoleItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<RoleItem>(dataTableRef);
 
 const dialogState = reactive({
   title: "",
@@ -614,8 +620,8 @@ async function handleSubmit(): Promise<void> {
  *
  * @param roleId 指定时删除单个角色；不指定时删除表格勾选项
  */
-async function handleDelete(roleId?: string): Promise<void> {
-  const roleIds = roleId ?? selectedIds.value.join(",");
+async function handleDelete(row?: RoleItem): Promise<void> {
+  const roleIds = row?.id ?? selectedIds.value.join(",");
   if (!roleIds) {
     ElMessage.warning("请勾选删除项");
     return;
@@ -629,6 +635,11 @@ async function handleDelete(roleId?: string): Promise<void> {
     });
   } catch {
     ElMessage.info("已取消删除");
+    return;
+  }
+
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
     return;
   }
 

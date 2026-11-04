@@ -73,7 +73,12 @@
               <el-button type="primary" size="small" link @click="openDialog(scope.row.id)">
                 编辑
               </el-button>
-              <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+              <el-button
+                type="danger"
+                size="small"
+                link
+                @click="handleDelete(scope.row as TenantItem)"
+              >
                 删除
               </el-button>
             </template>
@@ -165,7 +170,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<TenantItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<TenantItem>(dataTableRef);
 
 const dialogState = reactive({ title: "", visible: false });
 
@@ -230,9 +236,9 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-async function handleDelete(id: string): Promise<void> {
+async function handleDelete(row: TenantItem): Promise<void> {
   try {
-    await ElMessageBox.confirm("确认删除选中的租户吗？", "警告", {
+    await ElMessageBox.confirm(`确认删除${row.name}租户吗？`, "警告", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
@@ -241,20 +247,42 @@ async function handleDelete(id: string): Promise<void> {
     ElMessage.info("已取消删除");
     return;
   }
+  if (row.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
+    return;
+  }
 
   loading.value = true;
   try {
-    await TenantManagementAPI.deleteByIds(id);
+    await TenantManagementAPI.deleteByIds(row.id);
     ElMessage.success("删除成功");
     handleResetQuery();
   } finally {
     loading.value = false;
   }
 }
-
-function handleBatchDelete(): void {
+async function handleBatchDelete(): Promise<void> {
   const ids = selectedIds.value.join(",");
-  if (ids) handleDelete(ids);
+  try {
+    await ElMessageBox.confirm(`确认批量删除租户吗？`, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    ElMessage.info("已取消删除");
+    return;
+  }
+  if (ids) {
+    loading.value = true;
+    try {
+      await TenantManagementAPI.deleteByIds(ids);
+      ElMessage.success("删除成功");
+      handleResetQuery();
+    } finally {
+      loading.value = false;
+    }
+  }
 }
 
 onMounted(() => {

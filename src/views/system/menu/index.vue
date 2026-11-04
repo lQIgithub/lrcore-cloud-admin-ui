@@ -184,7 +184,12 @@
                   编辑
                 </el-button>
                 <!--                v-hasPerm="['sys:menu:delete']"-->
-                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                <el-button
+                  type="danger"
+                  link
+                  size="small"
+                  @click.stop="handleDelete(scope.row as MenuItem)"
+                >
                   删除
                 </el-button>
               </template>
@@ -1272,7 +1277,8 @@ async function handleSubmit(): Promise<void> {
  *
  * @param menuId 菜单 ID
  */
-async function handleDelete(menuId: string): Promise<void> {
+async function handleDelete(row?: MenuItem): Promise<void> {
+  const menuId = row?.id;
   if (!menuId) {
     ElMessage.warning("请勾选删除项");
     return;
@@ -1286,6 +1292,11 @@ async function handleDelete(menuId: string): Promise<void> {
     });
   } catch {
     ElMessage.info("已取消删除");
+    return;
+  }
+
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
     return;
   }
 

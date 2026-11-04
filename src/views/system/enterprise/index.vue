@@ -135,7 +135,12 @@
                 <el-button type="primary" size="small" link @click="openDialog(scope.row.id)">
                   编辑
                 </el-button>
-                <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                <el-button
+                  type="danger"
+                  size="small"
+                  link
+                  @click="handleDelete(scope.row as EnterpriseItem)"
+                >
                   删除
                 </el-button>
               </template>
@@ -291,6 +296,7 @@ const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "620
 
 const queryFormRef = ref<FormInstance>();
 const enterpriseFormRef = ref<FormInstance>();
+const dataTableRef = ref<unknown>();
 
 const { loading, list, total, params, fetchData, handleQuery, handleResetQuery } = usePageTable<
   EnterpriseItem,
@@ -305,7 +311,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<EnterpriseItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<EnterpriseItem>(dataTableRef);
 
 const dialogState = reactive({
   title: "",
@@ -396,7 +403,8 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
-async function handleDelete(id: string): Promise<void> {
+async function handleDelete(row?: EnterpriseItem): Promise<void> {
+  const id = row?.id;
   if (!id) {
     ElMessage.warning("请勾选删除项");
     return;
@@ -413,6 +421,11 @@ async function handleDelete(id: string): Promise<void> {
     return;
   }
 
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
+    return;
+  }
+
   loading.value = true;
   try {
     await EnterpriseAPI.deleteByIds(id);
@@ -424,9 +437,8 @@ async function handleDelete(id: string): Promise<void> {
 }
 
 function handleBatchDelete(): void {
-  const ids = selectedIds.value.join(",");
-  if (ids) {
-    handleDelete(ids);
+  if (selectedIds.value.length) {
+    handleDelete();
   }
 }
 

@@ -216,33 +216,39 @@ const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 type ScopeOption = OptionItem & {
   code: string;
   description?: string;
+  tenantId?: string;
 };
 
 const scopeOptions = ref<ScopeOption[]>([]);
 const scopeTreeRef = ref<InstanceType<typeof ElTree>>();
 const scopeKeyword = ref("");
 const sidebarCollapsed = ref(false);
-const currentAppId = ref("0");
+const currentAppId = ref("");
+const currentTenantId = ref("");
 
 const queryFormRef = ref<FormInstance>();
 const dictFormRef = ref<FormInstance>();
+
+const initialQueryParams: DictTypeQueryParams = {
+  pageNum: 1,
+  pageSize: 10,
+  appId: currentAppId.value,
+  keywords: "",
+};
 
 /** 分页表格数据管理 */
 const { loading, list, total, params, fetchData, handleQuery, handleResetQuery } = usePageTable<
   DictTypeItem,
   DictTypeQueryParams
 >({
-  initialParams: {
-    pageNum: 1,
-    pageSize: 10,
-    appId: currentAppId.value,
-    keywords: "",
-  },
+  initialParams: initialQueryParams,
   request: DictAPI.getPage,
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<DictTypeItem>();
+const dataTableRef = ref<unknown>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<DictTypeItem>(dataTableRef);
 
 const dialogState = reactive({
   title: "",
@@ -251,6 +257,7 @@ const dialogState = reactive({
 
 const initialFormData: DictTypeForm = {
   appId: currentAppId.value,
+  tenantId: currentTenantId.value,
   status: CommonStatus.ENABLED,
 };
 
@@ -276,6 +283,7 @@ async function handleScopeNodeClick(node: ScopeOption): Promise<void> {
   if (node.value == null) return;
 
   currentAppId.value = node.value.toString();
+  currentTenantId.value = node.tenantId ?? "";
   params.appId = currentAppId.value;
   handleQuery();
 }
@@ -284,23 +292,20 @@ async function loadScopeOptions(): Promise<void> {
   const apps = await AppAPI.getPage({
     pageNum: 1,
     pageSize: 1000,
-    status: CommonStatus.ENABLED,
   });
 
-  scopeOptions.value = [
-    {
-      value: "0",
-      label: "平台字典",
-      code: "PLATFORM",
-      description: "平台级内置字典",
-    },
-    ...(apps.list ?? []).map((app) => ({
-      value: app.id,
-      label: app.name,
-      code: app.code,
-      description: app.description,
-    })),
-  ];
+  scopeOptions.value = (apps.list ?? []).map((app) => ({
+    value: app.id,
+    label: app.name,
+    code: app.code,
+    description: app.description,
+    tenantId: app.tenantId,
+  }));
+  currentAppId.value = scopeOptions.value[0]?.value?.toString() ?? "";
+  currentTenantId.value = scopeOptions.value[0]?.tenantId ?? "";
+  initialQueryParams.appId = currentAppId.value;
+  initialFormData.appId = currentAppId.value;
+  initialFormData.tenantId = currentTenantId.value;
   nextTick(() => scopeTreeRef.value?.setCurrentKey(currentAppId.value));
 }
 
@@ -341,6 +346,7 @@ function closeDialog(): void {
 function handleCreateClick(): void {
   resetForm();
   formData.appId = currentAppId.value;
+  formData.tenantId = currentTenantId.value;
   dialogState.title = "新增字典";
   openDialog();
 }
@@ -355,6 +361,7 @@ async function handleEditClick(id: string): Promise<void> {
   dialogState.title = "修改字典";
   const data = await DictAPI.getFormData(id);
   Object.assign(formData, data);
+  formData.tenantId = currentTenantId.value;
   openDialog();
 }
 
@@ -443,8 +450,7 @@ function openDictData(row: DictTypeItem): void {
 }
 
 onMounted(() => {
-  loadScopeOptions();
-  handleQuery();
+  loadScopeOptions().then(() => handleQuery());
 });
 </script>
 

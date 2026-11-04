@@ -91,6 +91,7 @@
 
         <div class="page-table-wrapper">
           <el-table
+            ref="dataTableRef"
             v-loading="loading"
             class="page-table user-table"
             :data="list"
@@ -172,7 +173,12 @@
                     编辑
                   </el-button>
                   <!--                    v-hasPerm="'sys:user:delete'"-->
-                  <el-button type="danger" size="small" link @click="handleDelete(scope.row.id)">
+                  <el-button
+                    type="danger"
+                    size="small"
+                    link
+                    @click="handleDelete(scope.row as UserItem)"
+                  >
                     删除
                   </el-button>
                   <!--                    v-hasPerm="'sys:user:reset-password'"-->
@@ -360,6 +366,7 @@ const { toggle: toggleFullscreen } = useFullscreen(tableWrapperRef);
 const queryFormRef = ref<FormInstance>();
 const userFormRef = ref<FormInstance>();
 const resetPasswordFormRef = ref<FormInstance>();
+const dataTableRef = ref<unknown>();
 const sidebarCollapsed = ref(false);
 
 /** 分页表格数据管理 */
@@ -376,7 +383,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<UserItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<UserItem>(dataTableRef);
 
 async function handleSidebarNodeClick(node: {
   id?: string;
@@ -573,7 +581,8 @@ const handleSubmit = useDebounceFn(async () => {
  *
  * @param id 指定时删除单个用户；不指定时删除表格勾选项
  */
-async function handleDelete(id?: string): Promise<void> {
+async function handleDelete(row?: UserItem): Promise<void> {
+  const id = row?.id;
   const userIds = id ?? selectedIds.value.join(",");
   if (!userIds) {
     ElMessage.warning("请勾选删除项");
@@ -600,6 +609,11 @@ async function handleDelete(id?: string): Promise<void> {
     });
   } catch {
     ElMessage.info("已取消删除");
+    return;
+  }
+
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
     return;
   }
 

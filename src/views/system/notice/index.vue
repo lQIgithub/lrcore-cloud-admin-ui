@@ -352,7 +352,9 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<NoticeItem>();
+const dataTableRef = ref<unknown>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<NoticeItem>(dataTableRef);
 
 const userOptions = ref<OptionItem[]>([]);
 

@@ -285,7 +285,8 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<DictItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<DictItem>(dataTableRef);
 
 const dialogState = reactive({
   title: "",

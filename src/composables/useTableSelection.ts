@@ -1,4 +1,5 @@
-import { computed, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { computed, ref, type Ref } from "vue";
 
 /**
  * 表格行选择 Composable。
@@ -18,7 +19,9 @@ import { computed, ref } from "vue";
  * const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<RoleItem>();
  * ```
  */
-export function useTableSelection<T extends { id?: string | number }>() {
+export function useTableSelection<T extends { id?: string | number; buildIn?: unknown }>(
+  tableRef?: Ref<unknown>
+) {
   /** 选中的数据项 ID 列表。 */
   const selectedIds = ref<(string | number)[]>([]);
 
@@ -34,6 +37,12 @@ export function useTableSelection<T extends { id?: string | number }>() {
    * @param selection 选中的行数据列表
    */
   function handleSelectionChange(selection: T[]): void {
+    if (selection.some((item) => item.buildIn === 1)) {
+      ElMessage.warning("系统内置数据不允许操作");
+      clearSelection();
+      return;
+    }
+
     selectedIds.value = selection.flatMap((item) => (item.id ? [item.id] : []));
   }
 
@@ -46,9 +55,11 @@ export function useTableSelection<T extends { id?: string | number }>() {
     return selectedIds.value.includes(id);
   }
 
-  /** 清空选中 ID。注意：不会清空表格 UI 上的勾选状态，需页面自行调用表格实例的 `clearSelection`。 */
+  /** 清空选中 ID，并同步清空传入表格实例的勾选状态。 */
   function clearSelection(): void {
     selectedIds.value = [];
+    const table = tableRef?.value as { clearSelection?: () => void } | undefined;
+    table?.clearSelection?.();
   }
 
   return {

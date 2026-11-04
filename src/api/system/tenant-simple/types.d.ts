@@ -9,6 +9,7 @@ export interface TenantItem {
   id: string;
   name: string;
   code: string;
+  buildIn: number;
   /** 排序号 */
   sort?: number;
   description?: string;

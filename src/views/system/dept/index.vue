@@ -156,7 +156,7 @@
                   type="danger"
                   link
                   size="small"
-                  @click.stop="handleDelete(scope.row.id)"
+                  @click.stop="handleDelete(scope.row as DeptItem)"
                 >
                   删除
                 </el-button>
@@ -257,7 +257,8 @@ const queryParams = reactive<DeptQueryParams>({
   status: undefined,
 });
 
-const { selectedIds, hasSelection, handleSelectionChange } = useTableSelection<DeptItem>();
+const { selectedIds, hasSelection, handleSelectionChange } =
+  useTableSelection<DeptItem>(dataTableRef);
 
 const dialogState = reactive({
   title: "",
@@ -529,8 +530,8 @@ async function handleSubmit(): Promise<void> {
  *
  * @param deptId 指定时删除单个部门；不指定时删除表格勾选项
  */
-async function handleDelete(deptId?: string): Promise<void> {
-  const deptIds = deptId ?? selectedIds.value.join(",");
+async function handleDelete(row?: DeptItem): Promise<void> {
+  const deptIds = row?.id ?? selectedIds.value.join(",");
   if (!deptIds) {
     ElMessage.warning("请勾选删除项");
     return;
@@ -544,6 +545,11 @@ async function handleDelete(deptId?: string): Promise<void> {
     });
   } catch {
     ElMessage.info("已取消删除");
+    return;
+  }
+
+  if (row?.buildIn === 1) {
+    ElMessage.warning("系统内置数据不允许操作");
     return;
   }
 
