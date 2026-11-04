@@ -274,19 +274,12 @@ describe("isSasToken", () => {
 });
 
 describe("buildSsoLogoutUrl", () => {
-  it("指向 AS 前通道登出端点并携带回跳与 id_token_hint", () => {
+  it("指向 AS 登出端点并携带回跳", () => {
     const url = buildSsoLogoutUrl("id-token-abc");
     const [base, query] = url.split("?");
-    expect(base).toBe(`${SSO_ISSUER}/connect/logout`);
+    expect(base).toBe(`${SSO_ISSUER}/logout`);
     const params = new URLSearchParams(query);
-    expect(params.get("post_logout_redirect_uri")).toBe(`${window.location.origin}/login`);
-    expect(params.get("id_token_hint")).toBe("id-token-abc");
-  });
-
-  it("无 id_token 时不携带 id_token_hint（匿名前通道登出）", () => {
-    const url = buildSsoLogoutUrl("");
-    const params = new URLSearchParams(url.split("?")[1]);
-    expect(params.get("id_token_hint")).toBeNull();
-    expect(params.get("post_logout_redirect_uri")).toBe(`${window.location.origin}/login`);
+    expect(params.get("client_id")).toBe(SSO_CLIENT_ID);
+    expect(params.get("redirect")).toBe(`${window.location.origin}/login?logout=1`);
   });
 });

@@ -510,11 +510,8 @@ export function isSasToken(token: string | null | undefined): boolean {
  * （含发布 back-channel logout_token 通知其他 RP）→ 302 回跳 post_logout_redirect_uri。
  */
 export function buildSsoLogoutUrl(idTokenHint: string): string {
-  const params = new URLSearchParams({
-    post_logout_redirect_uri: `${window.location.origin}/login`,
-  });
-  if (idTokenHint) {
-    params.set("id_token_hint", idTokenHint);
-  }
-  return `${SSO_ISSUER}/connect/logout?${params.toString()}`;
+  const logoutRedirect = `${window.location.origin}/login?logout=1`;
+  return `${SSO_ISSUER}/logout?client_id=${encodeURIComponent(
+    SSO_CLIENT_ID
+  )}&redirect=${encodeURIComponent(logoutRedirect)}`;
 }
