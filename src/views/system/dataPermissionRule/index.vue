@@ -304,7 +304,7 @@
           class="mb-4"
           type="warning"
           :closable="false"
-          title="字段级 / 自定义SQL 规则当前运行时暂不生效（后端未实现对应执行器），保存后仅作为配置预留。"
+          title="字段级（COLUMN）规则当前运行时暂不生效（后端未实现脱敏执行器），保存后仅作为配置预留。"
         />
 
         <el-row :gutter="16">
@@ -340,7 +340,11 @@
                 <el-option v-for="c in columnOptions" :key="c" :label="c" :value="c" />
               </el-select>
             </el-form-item>
-            <el-form-item v-else label="权限字段" prop="permissionColumn">
+            <el-form-item
+              v-else-if="formData.ruleTypeEnum !== 'CUSTOM_SQL'"
+              label="权限字段"
+              prop="permissionColumn"
+            >
               <el-select
                 v-model="formData.permissionColumn"
                 :loading="columnsLoading"
@@ -353,6 +357,25 @@
                 <el-option v-for="c in columnOptions" :key="c" :label="c" :value="c" />
               </el-select>
             </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row v-if="formData.ruleTypeEnum === 'CUSTOM_SQL'" :gutter="16">
+          <el-col :span="24">
+            <el-form-item label="自定义SQL" prop="permissionValue">
+              <el-input
+                v-model="formData.permissionValue"
+                type="textarea"
+                :rows="3"
+                maxlength="500"
+                placeholder="WHERE 条件片段，如: create_time >= '${30DaysAgo}' AND deleted = 0（SELECT 语句会自动包装为 表.id IN (...)）"
+              />
+            </el-form-item>
+            <div class="form-tip">
+              支持占位符: ${'$'}{currentUserId} ${'$'}{currentUser.deptId} ${'$'}{currentUser.entId}
+              ${'$'}{tenantId} ${'$'}{today} ${'$'}{now} ${'$'}{30DaysAgo} ${'$'}{yearStart}
+              ${'$'}{yearEnd}
+            </div>
           </el-col>
         </el-row>
 
@@ -595,6 +618,11 @@ const { loading, list, total, params, fetchData, handleQuery, handleResetQuery }
   onBeforeReset: () => queryFormRef.value?.resetFields(),
 });
 
+// 页面加载即拉取列表
+onMounted(() => {
+  fetchData();
+});
+
 const dataTableRef = ref<unknown>();
 const { selectedIds, hasSelection, handleSelectionChange } =
   useTableSelection<DataPermissionRuleItem>(dataTableRef);
@@ -642,6 +670,10 @@ const rules = computed<FormRules>(() => {
   }
   if (formData.ruleTypeEnum === "DATA_SCOPE") {
     base.dataScopeEnum = [{ required: true, message: "请选择数据范围", trigger: "change" }];
+  }
+  if (formData.ruleTypeEnum === "CUSTOM_SQL") {
+    base.targetTable = [{ required: true, message: "请选择目标表", trigger: "change" }];
+    base.permissionValue = [{ required: true, message: "请输入自定义SQL条件", trigger: "blur" }];
   }
   return base;
 });
