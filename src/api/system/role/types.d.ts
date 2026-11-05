@@ -31,10 +31,6 @@ export interface RoleItem {
   sort?: number;
   /** 角色状态 */
   status?: number;
-  /** 数据权限(1-所有数据 2-部门及子部门数据 3-本部门数据 4-本人数据 5-自定义部门数据) */
-  dataScope?: number;
-  /** 数据权限标签 */
-  dataScopeLabel?: string;
   /** 是否内置(1:是；0:否) */
   buildIn?: number;
   /** 修改时间 */
@@ -54,10 +50,6 @@ export interface RoleForm {
   roleScope?: RoleScope;
   /** 排序 */
   sort?: number;
-  /** 数据权限(1-所有数据 2-部门及子部门数据 3-本部门数据 4-本人数据 5-自定义部门数据) */
-  dataScope?: number;
-  /** 自定义数据权限部门ID列表(当dataScope=5时有效) */
-  deptIds?: string[];
   /** 角色状态 */
   status?: number;
   /** 备注 */

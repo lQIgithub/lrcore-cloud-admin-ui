@@ -43,13 +43,6 @@ const RoleAPI = {
       method: "get",
     });
   },
-  /** 获取角色的部门ID集合(自定义数据权限) */
-  getRoleDeptIds(roleId: string) {
-    return request<unknown, string[]>({
-      url: SYSTEM_BASE_PREFIX + `${ROLE_BASE_URL}/${roleId}/dept-ids`,
-      method: "get",
-    });
-  },
   /** 新增角色 */
   create(data: RoleForm) {
     return request({ url: SYSTEM_BASE_PREFIX + ROLE_BASE_URL, method: "post", data });
