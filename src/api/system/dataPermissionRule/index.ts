@@ -231,6 +231,28 @@ const DataPermissionRuleAPI = {
       data: toPayload(data),
     });
   },
+  /** 获取数据库表名列表（目标表下拉，实时来自 information_schema） */
+  getTables(): Promise<string[]> {
+    return request<unknown, string[]>({
+      url: `${BASE_URL}/tables`,
+      method: "get",
+    });
+  },
+  /** 获取指定表的列名列表（字段下拉，随目标表级联加载） */
+  getColumns(table: string): Promise<string[]> {
+    return request<unknown, string[]>({
+      url: `${BASE_URL}/columns`,
+      method: "get",
+      params: { table },
+    });
+  },
+  /** 应用选项（来自 sys_app，规则配置-应用ID下拉） */
+  getApps(): Promise<{ id: string; name: string; code: string }[]> {
+    return request<unknown, { id: string; name: string; code: string }[]>({
+      url: `${BASE_URL}/apps`,
+      method: "get",
+    });
+  },
   /** 删除规则（多个 ID 以英文逗号分割，逐个调用后端单删接口） */
   async remove(ids: string): Promise<void> {
     const idList = ids

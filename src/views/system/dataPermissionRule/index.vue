@@ -103,7 +103,7 @@
         >
           <el-table-column type="selection" width="55" align="center" />
           <el-table-column type="index" label="序号" width="60" />
-          <el-table-column label="规则名称" prop="ruleName" min-width="160">
+          <el-table-column label="规则名称" prop="ruleName" min-width="240">
             <template #default="scope">
               <span>{{ scope.row.ruleName }}</span>
               <el-tag v-if="scope.row.buildIn === 1" type="warning" size="small" class="ml-2">
@@ -119,7 +119,7 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column align="center" label="数据范围" width="110">
+          <el-table-column align="center" label="数据范围" width="150">
             <template #default="scope">
               <el-tag v-if="scope.row.dataScopeEnum" type="info">
                 {{ scopeLabel(scope.row.dataScopeEnum) }}
@@ -310,12 +310,16 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="目标表" prop="targetTable">
-              <el-input
+              <el-select
                 v-model="formData.targetTable"
-                placeholder="目标表名，如 sys_user（留空 = 适用所有表）"
+                :loading="tablesLoading"
+                filterable
                 clearable
-                maxlength="100"
-              />
+                placeholder="请选择目标表（留空 = 适用所有表）"
+                style="width: 100%"
+              >
+                <el-option v-for="t in tableOptions" :key="t" :label="t" :value="t" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -324,20 +328,30 @@
               label="目标字段"
               prop="targetField"
             >
-              <el-input
+              <el-select
                 v-model="formData.targetField"
-                placeholder="目标字段名，如 dept_id"
+                :loading="columnsLoading"
+                filterable
                 clearable
-                maxlength="100"
-              />
+                :disabled="!formData.targetTable"
+                :placeholder="formData.targetTable ? '请选择字段' : '请先选择目标表'"
+                style="width: 100%"
+              >
+                <el-option v-for="c in columnOptions" :key="c" :label="c" :value="c" />
+              </el-select>
             </el-form-item>
             <el-form-item v-else label="权限字段" prop="permissionColumn">
-              <el-input
+              <el-select
                 v-model="formData.permissionColumn"
-                placeholder="权限字段（优先于目标字段），如 dept_id"
+                :loading="columnsLoading"
+                filterable
                 clearable
-                maxlength="100"
-              />
+                :disabled="!formData.targetTable"
+                :placeholder="formData.targetTable ? '请选择字段' : '请先选择目标表'"
+                style="width: 100%"
+              >
+                <el-option v-for="c in columnOptions" :key="c" :label="c" :value="c" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -401,11 +415,21 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="应用ID" prop="appId">
-              <el-input
+              <el-select
                 v-model="formData.appId"
-                placeholder="应用ID（Long，留空 = 全局应用）"
+                :loading="appsLoading"
+                filterable
                 clearable
-              />
+                placeholder="请选择应用（留空 = 全局应用）"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="app in appOptions"
+                  :key="app.id"
+                  :label="app.code ? `${app.name}（${app.code}）` : app.name"
+                  :value="app.id"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -612,7 +636,7 @@ const rules = computed<FormRules>(() => {
     ruleTypeEnum: [{ required: true, message: "请选择规则类型", trigger: "change" }],
   };
   if (formData.ruleTypeEnum === "ROW") {
-    base.targetField = [{ required: true, message: "请输入目标字段", trigger: "blur" }];
+    base.targetField = [{ required: true, message: "请选择目标字段", trigger: "change" }];
     base.permOperatorEnum = [{ required: true, message: "请选择操作符", trigger: "change" }];
     base.permissionValue = [{ required: true, message: "请输入权限值", trigger: "blur" }];
   }
@@ -643,6 +667,103 @@ const filterConditionPreview = computed(() => buildFilterCondition(formData.role
 function toggleDialogFullscreen(): void {
   dialogState.fullscreen = !dialogState.fullscreen;
 }
+
+// ==================== 目标表 / 字段 / 应用元数据（实时来自数据库） ====================
+
+/** 应用选项（sys_app） */
+interface AppOptionItem {
+  id: string;
+  name: string;
+  code: string;
+}
+
+const appOptions = ref<AppOptionItem[]>([]);
+const appsLoading = ref(false);
+let appsLoaded = false;
+
+/** 加载应用列表（会话内缓存） */
+async function loadAppOptions(force = false): Promise<void> {
+  if (appsLoaded && !force) {
+    return;
+  }
+  appsLoading.value = true;
+  try {
+    const list = await DataPermissionRuleAPI.getApps();
+    // 编辑回显兼容：当前应用不在启用列表（已停用/删除）时保留为可选项
+    if (formData.appId && !list.some((a) => a.id === formData.appId)) {
+      list.unshift({ id: formData.appId, name: `应用 ${formData.appId}`, code: "" });
+    }
+    appOptions.value = list;
+    appsLoaded = true;
+  } catch {
+    appOptions.value = [];
+  } finally {
+    appsLoading.value = false;
+  }
+}
+
+const tableOptions = ref<string[]>([]);
+const columnOptions = ref<string[]>([]);
+const tablesLoading = ref(false);
+const columnsLoading = ref(false);
+let tablesLoaded = false;
+
+/** 加载表名列表（会话内缓存，可强制刷新） */
+async function loadTableOptions(force = false): Promise<void> {
+  if (tablesLoaded && !force) {
+    return;
+  }
+  tablesLoading.value = true;
+  try {
+    tableOptions.value = await DataPermissionRuleAPI.getTables();
+    tablesLoaded = true;
+  } catch {
+    tableOptions.value = [];
+  } finally {
+    tablesLoading.value = false;
+  }
+}
+
+/** 列列表中不存在当前值时保留之（编辑回显：列可能已被改名/删除） */
+function mergeCurrentValue(values: string[], current?: string): string[] {
+  if (current && !values.some((v) => v.toLowerCase() === current.toLowerCase())) {
+    return [current, ...values];
+  }
+  return values;
+}
+
+/** 按目标表加载列名列表 */
+async function loadColumnOptions(table?: string): Promise<void> {
+  if (!table) {
+    columnOptions.value = [];
+    return;
+  }
+  columnsLoading.value = true;
+  try {
+    const cols = await DataPermissionRuleAPI.getColumns(table);
+    const current =
+      formData.ruleTypeEnum === "ROW" ? formData.targetField : formData.permissionColumn;
+    columnOptions.value = mergeCurrentValue(cols, current);
+  } catch {
+    columnOptions.value = [];
+  } finally {
+    columnsLoading.value = false;
+  }
+}
+
+// 目标表变化 → 级联刷新字段；清空目标表时同时清空字段
+watch(
+  () => formData.targetTable,
+  async (table) => {
+    if (!table) {
+      formData.targetField = "";
+      formData.permissionColumn = "";
+      columnOptions.value = [];
+      return;
+    }
+    await loadColumnOptions(table);
+  }
+);
 
 /**
  * 打开新增 / 编辑弹窗
@@ -684,6 +805,7 @@ async function openDialog(row?: DataPermissionRuleItem): Promise<void> {
     dialogState.title = "新增数据权限规则";
   }
 
+  await Promise.all([loadTableOptions(), loadAppOptions()]);
   dialogState.visible = true;
   dialogState.fullscreen = false;
   nextTick(() => ruleFormRef.value?.clearValidate());
